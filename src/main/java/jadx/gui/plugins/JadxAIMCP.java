@@ -7,10 +7,14 @@ import com.sun.net.httpserver.HttpServer;
 import jadx.api.JavaClass;
 import jadx.api.JavaField;
 import jadx.api.JavaMethod;
+import jadx.api.ResourceFile;
+import jadx.api.ResourceType;
 import jadx.api.plugins.JadxPlugin;
 import jadx.api.plugins.JadxPluginContext;
 import jadx.api.plugins.JadxPluginInfo;
 import jadx.api.plugins.JadxPluginInfoBuilder;
+import jadx.core.utils.android.AndroidManifestParser;
+import jadx.core.xmlgen.ResContainer;
 import jadx.gui.JadxWrapper;
 import jadx.gui.ui.MainWindow;
 
@@ -89,6 +93,7 @@ public class JadxAIMCP implements JadxPlugin {
             server.createContext("/methods-of-class", new MethodsOfClassHandler());
             server.createContext("/fields-of-class", new FieldsOfClassHandler());
             server.createContext("/smali-of-class", new SmaliOfClassHandler());
+            server.createContext("/manifest", new ManifestHandler());
 
             server.setExecutor(null);
             server.start();
@@ -361,6 +366,36 @@ public class JadxAIMCP implements JadxPlugin {
             } catch (Exception e) {
                 e.printStackTrace();
                 sendJson(exchange, 500, Map.of("error", "Internal error retrieving class source."));
+            }
+        }
+    }
+
+    class ManifestHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            try {
+                JadxWrapper wrapper = mainWindow.getWrapper();
+                List<ResourceFile> resources = wrapper.getResources();
+
+                ResourceFile manifest = AndroidManifestParser.getAndroidManifest(resources);
+                if (manifest == null) {
+                    sendJson(exchange, 404, Map.of("error", "AndroidManifest.xml not found."));
+                    return;
+                }
+
+                ResContainer container = manifest.loadContent();
+                String manifestContent = container.getText().getCodeStr();
+
+                Map<String, Object> result = new HashMap<>();
+                result.put("name", manifest.getOriginalName());
+                result.put("type", "manifest/xml");
+                result.put("content", manifestContent);
+
+                sendJson(exchange, 200, result);
+            } catch (Exception e) {
+                e.printStackTrace();
+                sendJson(exchange, 500,
+                        Map.of("error", "Internal error retrieving AndroidManifest.xml: " + e.getMessage()));
             }
         }
     }
