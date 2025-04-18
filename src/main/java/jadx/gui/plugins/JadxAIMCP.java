@@ -14,6 +14,8 @@ import jadx.api.plugins.JadxPluginContext;
 import jadx.api.plugins.JadxPluginInfo;
 import jadx.api.plugins.JadxPluginInfoBuilder;
 import jadx.core.utils.android.AndroidManifestParser;
+import jadx.core.utils.android.AppAttribute;
+import jadx.core.utils.android.ApplicationParams;
 import jadx.core.xmlgen.ResContainer;
 import jadx.gui.JadxWrapper;
 import jadx.gui.ui.MainWindow;
@@ -94,6 +96,8 @@ public class JadxAIMCP implements JadxPlugin {
             server.createContext("/fields-of-class", new FieldsOfClassHandler());
             server.createContext("/smali-of-class", new SmaliOfClassHandler());
             server.createContext("/manifest", new ManifestHandler());
+            server.createContext("/main-application", new MainApplicationHandler());
+            server.createContext("/main-activity", new MainActivityHandler());
 
             server.setExecutor(null);
             server.start();
@@ -390,6 +394,86 @@ public class JadxAIMCP implements JadxPlugin {
                 result.put("name", manifest.getOriginalName());
                 result.put("type", "manifest/xml");
                 result.put("content", manifestContent);
+
+                sendJson(exchange, 200, result);
+            } catch (Exception e) {
+                e.printStackTrace();
+                sendJson(exchange, 500,
+                        Map.of("error", "Internal error retrieving AndroidManifest.xml: " + e.getMessage()));
+            }
+        }
+    }
+
+    class MainApplicationHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            try {
+                JadxWrapper wrapper = mainWindow.getWrapper();
+                List<ResourceFile> resources = wrapper.getResources();
+
+                AndroidManifestParser parser = new AndroidManifestParser(AndroidManifestParser.getAndroidManifest(resources), EnumSet.of(AppAttribute.APPLICATION), wrapper.getArgs().getSecurity());
+                if (!parser.isManifestFound()) {
+                    sendJson(exchange, 404, Map.of("error", "AndroidManifest.xml not found."));
+                    return;
+                }
+
+                ApplicationParams results = parser.parse();
+                if (results.getApplication() == null) {
+                    sendJson(exchange, 404, Map.of("error", "Failed to get application from manifest"));
+                    return;
+                }
+
+                JavaClass applicationClass = results.getApplicationJavaClass(wrapper.getDecompiler());
+
+                if (applicationClass == null) {
+                    sendJson(exchange, 404, Map.of("error", "Failed to get application class: " + results.getApplication()));
+                    return;
+                }
+
+                Map<String, Object> result = new HashMap<>();
+                result.put("name", applicationClass.getFullName());
+                result.put("type", "code/java");
+                result.put("content", applicationClass.getCode());
+
+                sendJson(exchange, 200, result);
+            } catch (Exception e) {
+                e.printStackTrace();
+                sendJson(exchange, 500,
+                        Map.of("error", "Internal error retrieving AndroidManifest.xml: " + e.getMessage()));
+            }
+        }
+    }
+
+    class MainActivityHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            try {
+                JadxWrapper wrapper = mainWindow.getWrapper();
+                List<ResourceFile> resources = wrapper.getResources();
+
+                AndroidManifestParser parser = new AndroidManifestParser(AndroidManifestParser.getAndroidManifest(resources), EnumSet.of(AppAttribute.MAIN_ACTIVITY), wrapper.getArgs().getSecurity());
+                if (!parser.isManifestFound()) {
+                    sendJson(exchange, 404, Map.of("error", "AndroidManifest.xml not found."));
+                    return;
+                }
+
+                ApplicationParams results = parser.parse();
+                if (results.getMainActivity() == null) {
+                    sendJson(exchange, 404, Map.of("error", "Failed to get main activity from manifest"));
+                    return;
+                }
+
+                JavaClass mainActivityClass = results.getMainActivityJavaClass(wrapper.getDecompiler());
+
+                if (mainActivityClass == null) {
+                    sendJson(exchange, 404, Map.of("error", "Failed to get activity class: " + results.getApplication()));
+                    return;
+                }
+
+                Map<String, Object> result = new HashMap<>();
+                result.put("name", mainActivityClass.getFullName());
+                result.put("type", "code/java");
+                result.put("content", mainActivityClass.getCode());
 
                 sendJson(exchange, 200, result);
             } catch (Exception e) {
