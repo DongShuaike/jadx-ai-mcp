@@ -58,29 +58,10 @@ public class JadxAIMCP implements JadxPlugin {
         }
     }
 
-
-    /*
-    @Override
-    public void init(JadxPluginContext context) {
-        if (context.getGuiContext() == null) {
-            return;
-        } else {
-            this.mainWindow = (MainWindow) context.getGuiContext().getMainFrame();
-        }
-        System.out.println("MCP HTTP Plugin: Starting HTTP server...");
-        this.start(mainWindow);
-        //start();
-        //new JadxAIPlugin(mainWindow).start();
-    }
-    */
-    // Add this public no-argument constructor
+    // public no-argument constructor
     public JadxAIMCP() {
         // Empty constructor
     }
-
-    //public JadxAIPlugin(MainWindow mainWindow) {
-      //  this.mainWindow = mainWindow;
-    //}
 
     public void start(MainWindow mainWindow) {
 
@@ -115,27 +96,25 @@ public class JadxAIMCP implements JadxPlugin {
                 .homepage("https://github.com/zinja-coder/jadx-ai-mcp")
                 .requiredJadxVersion("1.5.1, r2333")
                 .build();
-
-                /*new JadxPluginInfo(
-                "jax-ai-mcp",
-                "JADX-AI MCP Integration",
-                "Provides MCP support to JADX",
-                "1.0.5",
-                "Zinja Coder");*/
     }
 
     class CurrentClassHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
-            String className = getSelectedTabTitle();
-            String code = extractTextFromCurrentTab();
+            try {
+                String className = getSelectedTabTitle();
+                String code = extractTextFromCurrentTab();
 
-            Map<String, Object> result = new HashMap<>();
-            result.put("name", className != null ? className.replace(".java", "") : "unknown");
-            result.put("type", "code/java");
-            result.put("content", code != null ? code : "");
+                Map<String, Object> result = new HashMap<>();
+                result.put("name", className != null ? className.replace(".java", "") : "unknown");
+                result.put("type", "code/java");
+                result.put("content", code != null ? code : "");
 
-            sendJson(exchange, 200, result);
+                sendJson(exchange, 200, result);
+            } catch (Exception e) {
+                e.printStackTrace();
+                sendJson(exchange, 500, Map.of("error", "Internal error while trying to fetch current class: " + e.getMessage()));
+            }
         }
     }
 
@@ -161,7 +140,7 @@ public class JadxAIMCP implements JadxPlugin {
                 sendJson(exchange, 200, result);
             } catch (Exception e) {
                 e.printStackTrace();
-                sendJson(exchange, 500, Map.of("error", "Failed to load class list."));
+                sendJson(exchange, 500, Map.of("error", "Failed to load class list: " + e.getMessage()));
             }
         }
     }
@@ -169,12 +148,17 @@ public class JadxAIMCP implements JadxPlugin {
     class SelectedTextHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
-            JTextArea textArea = findTextArea(mainWindow.getTabbedPane().getSelectedComponent());
-            String selectedText = textArea != null ? textArea.getSelectedText() : null;
+            try {
+                JTextArea textArea = findTextArea(mainWindow.getTabbedPane().getSelectedComponent());
+                String selectedText = textArea != null ? textArea.getSelectedText() : null;
 
-            Map<String, String> result = new HashMap<>();
-            result.put("selectedText", selectedText != null ? selectedText : "");
-            sendJson(exchange, 200, result);
+                Map<String, String> result = new HashMap<>();
+                result.put("selectedText", selectedText != null ? selectedText : "");
+                sendJson(exchange, 200, result);
+            } catch (Exception e) {
+                e.printStackTrace();
+                sendJson(exchange, 500, Map.of("error", "Internal error while trying to fetch selected text: " + e.getMessage()));
+            }
         }
     }
 
@@ -220,7 +204,7 @@ public class JadxAIMCP implements JadxPlugin {
                 sendJson(exchange, 404, Map.of("error", "Method not found in any class."));
             } catch (Exception e) {
                 e.printStackTrace(); // Also log this to your IDE or terminal
-                sendJson(exchange, 500, Map.of("error", "Internal error: " + e.getMessage()));
+                sendJson(exchange, 500, Map.of("error", "Internal error while trying to retrieve method code: " + e.getMessage()));
             }
         }
     }
@@ -253,7 +237,7 @@ public class JadxAIMCP implements JadxPlugin {
                 sendJson(exchange, 404, Map.of("error", "Class not found."));
             } catch (Exception e) {
                 e.printStackTrace();
-                sendJson(exchange, 500, Map.of("error", "Internal error retrieving class source."));
+                sendJson(exchange, 500, Map.of("error", "Internal error retrieving class source: " + e.getMessage()));
             }
         }
     }
@@ -281,7 +265,7 @@ public class JadxAIMCP implements JadxPlugin {
                 sendJson(exchange, 200, results);
             } catch (Exception e) {
                 e.printStackTrace();
-                sendJson(exchange, 500, Map.of("error", "Internal error during method search"));
+                sendJson(exchange, 500, Map.of("error", "Internal error during method search: " + e.getMessage()));
             }
         }
     }
@@ -309,7 +293,7 @@ public class JadxAIMCP implements JadxPlugin {
                 sendJson(exchange, 404, Map.of("error", "Class not found."));
             } catch (Exception e) {
                 e.printStackTrace();
-                sendJson(exchange, 500, Map.of("error", "Internal error retrieving methods."));
+                sendJson(exchange, 500, Map.of("error", "Internal error retrieving methods: " + e.getMessage()));
             }
         }
     }
@@ -337,7 +321,7 @@ public class JadxAIMCP implements JadxPlugin {
                 sendJson(exchange, 404, Map.of("error", "Class not found."));
             } catch (Exception e) {
                 e.printStackTrace();
-                sendJson(exchange, 500, Map.of("error", "Internal error retrieving fields."));
+                sendJson(exchange, 500, Map.of("error", "Internal error retrieving fields: " + e.getMessage()));
             }
         }
     }
@@ -369,7 +353,7 @@ public class JadxAIMCP implements JadxPlugin {
                 sendJson(exchange, 404, Map.of("error", "Class not found."));
             } catch (Exception e) {
                 e.printStackTrace();
-                sendJson(exchange, 500, Map.of("error", "Internal error retrieving class source."));
+                sendJson(exchange, 500, Map.of("error", "Internal error retrieving class source: " + e.getMessage()));
             }
         }
     }
