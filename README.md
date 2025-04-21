@@ -39,6 +39,11 @@ It is combination of two tools:
 
 **JADX MCP Server** is a standalone Python server that interacts with a `JADX-AI-MCP` plugin (see: [jadx-ai-mcp](https://github.com/zinja-coder/jadx-ai-mcp)) via MCP (Model Context Protocol). It lets LLMs communicate with the decompiled Android app context live.
 
+---
+
+# Other MCP Servers For Android Reverse Engineering
+ - **[APKTool-MCP-Server](https://github.com/zinja-coder/apktool-mcp-server)**
+
 ## Current MCP Tools
 
 The following MCP tools are available:
