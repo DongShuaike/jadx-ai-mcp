@@ -116,17 +116,6 @@ The following MCP tools are available:
     "Can you identify the Android component type (Activity, Service, etc.)?"
 ---
 
-## 📦 Features
-
-- ✅ MCP server baked into JADX-GUI
-- ✅ Exposes currently selected class via HTTP
-- ✅ Exposes GUI access to Cluade, i.e. "Explain the selected code to me, Explain what is the use case of highlighted code"
-- ✅ Built-in Claude Desktop integration
-- ✅ Beta support for real-time code review
-- ✅ MCP client interoperability via local loopback
-
----
-
 ## 🛠️ Getting Started 
 
 ### 1. Downlaod from Releases: https://github.com/zinja-coder/jadx-ai-mcp/releases
