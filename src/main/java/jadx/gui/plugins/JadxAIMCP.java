@@ -89,6 +89,7 @@ public class JadxAIMCP implements JadxPlugin {
             app.get("/manifest", this::handleManifest);
             app.get("/main-application", this::handleMainApplication);
             app.get("/main-activity", this::handleMainActivity);
+            app.get("/main-application-class-names", this::handleMainApplicationClassNames);
 
             logger.info("JADX MCP plugin HTTP server started at http://127.0.0.1:8650/");
         } catch (Exception e) {
@@ -352,6 +353,53 @@ public class JadxAIMCP implements JadxPlugin {
         }
     }
 
+    private void handleMainApplicationClassNames(Context ctx) {
+        try {
+            JadxWrapper wrapper = mainWindow.getWrapper();
+            List<ResourceFile> resources = wrapper.getResources();
+
+            // Get the manifest ResourceFile
+            ResourceFile manifestRes = AndroidManifestParser.getAndroidManifest(resources);
+            if (manifestRes == null) {
+                ctx.status(404).json(Map.of("error", "AndroidManifest.xml not found."));
+                return;
+            }
+
+            // Load manifest content and parse XML
+            String manifestXml = manifestRes.loadContent().getText().getCodeStr();
+            Document manifestDoc = parseManifestXml(manifestXml, wrapper.getArgs().getSecurity());
+
+            // Extract the package name from the <manifest> tag
+            Element manifestElement = (Element) manifestDoc.getElementsByTagName("manifest").item(0);
+            String packageName = manifestElement.getAttribute("package");
+
+            if (packageName.isEmpty()) {
+                ctx.status(404).json(Map.of("error", "Package name not found in manifest."));
+                return;
+            }
+
+            // Filter classes under this package
+            List<JavaClass> matchedClasses = wrapper.getDecompiler().getClasses().stream()
+                    .filter(cls -> cls.getFullName().startsWith(packageName))
+                    .collect(Collectors.toList());
+
+            List<Map<String, Object>> classesInfo = new ArrayList<>();
+            for (JavaClass cls : matchedClasses) {
+                Map<String, Object> classInfo = new HashMap<>();
+                classInfo.put("name", cls.getFullName());
+                classesInfo.add(classInfo);
+            }
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("allClassesInPackageName", classesInfo);
+
+            ctx.json(result);
+        } catch (Exception e) {
+            logger.error("Error handling main application", e);
+            ctx.status(500).json(Map.of("error", "Internal error retrieving AndroidManifest.xml: " + e.getMessage()));
+        }
+    }
+
     private void handleMainApplication(Context ctx) {
         try {
             JadxWrapper wrapper = mainWindow.getWrapper();
@@ -400,8 +448,6 @@ public class JadxAIMCP implements JadxPlugin {
             ctx.status(500).json(Map.of("error", "Internal error retrieving AndroidManifest.xml: " + e.getMessage()));
         }
     }
-
-
 
 
     private void handleMainActivity(Context ctx) {
