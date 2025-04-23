@@ -5,7 +5,7 @@
 
     <groupId>jadx.gui.plugins</groupId>
     <artifactId>jadx-ai-mcp</artifactId>
-    <version>1.2.0</version>
+    <version>2.0.0</version>
 
     <properties>
         <maven.compiler.source>11</maven.compiler.source>
@@ -13,25 +13,36 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
+
+
     <dependencies>
         <!-- Local JAR dependency to access jadx-gui-->
         <dependency>
             <groupId>io.github.skylot</groupId>
             <artifactId>jadx-all</artifactId>
-            <version>LOCAL</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/lib/jadx-1.5.1-all.jar</systemPath>
-            <optional>true</optional>
-        </dependency>
-        <dependency>
-            <groupId>org.eclipse.jetty</groupId>
-            <artifactId>jetty-server</artifactId>
-            <version>12.0.12</version>
+            <version>1.5.1</version>
         </dependency>
         <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
             <version>2.10.1</version>
+        </dependency>
+        <!-- Javalin for HTTP server -->
+        <dependency>
+            <groupId>io.javalin</groupId>
+            <artifactId>javalin</artifactId>
+            <version>6.6.0</version>
+        </dependency>
+        <!-- Required for Javalin logging -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <version>2.0.7</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.17.2</version>
         </dependency>
     </dependencies>
 
@@ -76,12 +87,23 @@
                                     <exclude>io.github.skylot:jadx-all</exclude>
                                 </excludes>
                             </artifactSet>
-                            <!-- Relocate GSON to avoid conflicts -->
+                            <!-- Relocate dependencies to avoid conflicts -->
                             <relocations>
                                 <relocation>
                                     <pattern>com.google.gson</pattern>
-                                    <include>com.sun:httpserver</include>
                                     <shadedPattern>jadx.gui.plugins.mcp.deps.gson</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>io.javalin</pattern>
+                                    <shadedPattern>jadx.gui.plugins.mcp.deps.javalin</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>org.slf4j</pattern>
+                                    <shadedPattern>jadx.gui.plugins.mcp.deps.slf4j</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>com.fasterxml.jackson.core</pattern>
+                                    <shadedPattern>jadx.gui.plugins.mcp.deps.com.fasterxml.jackson.core</shadedPattern>
                                 </relocation>
                             </relocations>
                         </configuration>

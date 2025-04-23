@@ -1,9 +1,8 @@
 package jadx.gui.plugins;
 
 import com.google.gson.Gson;
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpHandler;
-import com.sun.net.httpserver.HttpServer;
+import io.javalin.Javalin;
+import io.javalin.http.Context;
 import jadx.api.JavaClass;
 import jadx.api.JavaField;
 import jadx.api.JavaMethod;
@@ -20,19 +19,21 @@ import jadx.core.xmlgen.ResContainer;
 import jadx.gui.JadxWrapper;
 import jadx.gui.ui.MainWindow;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.swing.*;
 import java.awt.*;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.net.InetSocketAddress;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class JadxAIMCP implements JadxPlugin {
     private MainWindow mainWindow;
     private final Gson gson = new Gson();
+    private Javalin app;
     public static final String PLUGIN_ID = "jadx-ai-mcp";
+    private static final Logger logger = LoggerFactory.getLogger(JadxAIMCP.class);
 
     @Override
     public void init(JadxPluginContext context) {
@@ -50,7 +51,7 @@ public class JadxAIMCP implements JadxPlugin {
                 return;
             }
 
-            System.out.println("MCP HTTP Plugin: Starting HTTP server...");
+            System.out.println("MCP Javalin Plugin: Starting HTTP server...");
             this.start(mainWindow);
         } catch (Exception e) {
             System.err.println("Plugin: Initialization error: " + e.getMessage());
@@ -64,26 +65,25 @@ public class JadxAIMCP implements JadxPlugin {
     }
 
     public void start(MainWindow mainWindow) {
-
         try {
-            HttpServer server = HttpServer.create(new InetSocketAddress(8650), 0);
-            server.createContext("/current-class", new CurrentClassHandler());
-            server.createContext("/all-classes", new AllClassesHandler());
-            server.createContext("/selected-text", new SelectedTextHandler());
-            server.createContext("/method-by-name", new MethodByNameHandler());
-            server.createContext("/class-source", new ClassSourceHandler());
-            server.createContext("/search-method", new SearchMethodHandler());
-            server.createContext("/methods-of-class", new MethodsOfClassHandler());
-            server.createContext("/fields-of-class", new FieldsOfClassHandler());
-            server.createContext("/smali-of-class", new SmaliOfClassHandler());
-            server.createContext("/manifest", new ManifestHandler());
-            server.createContext("/main-application", new MainApplicationHandler());
-            server.createContext("/main-activity", new MainActivityHandler());
+            app = Javalin.create().start(8650);
 
-            server.setExecutor(null);
-            server.start();
-            System.out.println("JADX MCP plugin HTTP server started at http://127.0.0.1:8650/");
-        } catch (IOException e) {
+            // Setup routes
+            app.get("/current-class", this::handleCurrentClass);
+            app.get("/all-classes", this::handleAllClasses);
+            app.get("/selected-text", this::handleSelectedText);
+            app.get("/method-by-name", this::handleMethodByName);
+            app.get("/class-source", this::handleClassSource);
+            app.get("/search-method", this::handleSearchMethod);
+            app.get("/methods-of-class", this::handleMethodsOfClass);
+            app.get("/fields-of-class", this::handleFieldsOfClass);
+            app.get("/smali-of-class", this::handleSmaliOfClass);
+            app.get("/manifest", this::handleManifest);
+            app.get("/main-application", this::handleMainApplication);
+            app.get("/main-activity", this::handleMainActivity);
+
+            logger.info("JADX MCP plugin HTTP server started at http://127.0.0.1:8650/");
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
@@ -98,376 +98,344 @@ public class JadxAIMCP implements JadxPlugin {
                 .build();
     }
 
-    class CurrentClassHandler implements HttpHandler {
-        @Override
-        public void handle(HttpExchange exchange) throws IOException {
-            try {
-                String className = getSelectedTabTitle();
-                String code = extractTextFromCurrentTab();
+    private void handleCurrentClass(Context ctx) {
+        try {
+            String className = getSelectedTabTitle();
+            String code = extractTextFromCurrentTab();
 
-                Map<String, Object> result = new HashMap<>();
-                result.put("name", className != null ? className.replace(".java", "") : "unknown");
-                result.put("type", "code/java");
-                result.put("content", code != null ? code : "");
+            Map<String, Object> result = new HashMap<>();
+            result.put("name", className != null ? className.replace(".java", "") : "unknown");
+            result.put("type", "code/java");
+            result.put("content", code != null ? code : "");
 
-                sendJson(exchange, 200, result);
-            } catch (Exception e) {
-                e.printStackTrace();
-                sendJson(exchange, 500, Map.of("error", "Internal error while trying to fetch current class: " + e.getMessage()));
-            }
+            ctx.json(result);
+        } catch (Exception e) {
+            e.printStackTrace();
+            ctx.status(500).json(Map.of("error", "Internal error while trying to fetch current class: " + e.getMessage()));
         }
     }
 
+    private void handleAllClasses(Context ctx) {
+        List<String> classList = new ArrayList<>();
 
-    class AllClassesHandler implements HttpHandler {
-        @Override
-        public void handle(HttpExchange exchange) throws IOException {
-            List<String> classList = new ArrayList<>();
+        try {
+            JadxWrapper wrapper = mainWindow.getWrapper();
 
-            try {
-                JadxWrapper wrapper = mainWindow.getWrapper();
-
-                List<JavaClass> classes = wrapper.getIncludedClassesWithInners();
-                for (JavaClass cls : classes) {
-                    classList.add(cls.getFullName());
-                }
-
-                Map<String, Object> result = new HashMap<>();
-                result.put("type", "class-list");
-                result.put("count", classList.size());
-                result.put("classes", classList);
-
-                sendJson(exchange, 200, result);
-            } catch (Exception e) {
-                e.printStackTrace();
-                sendJson(exchange, 500, Map.of("error", "Failed to load class list: " + e.getMessage()));
+            List<JavaClass> classes = wrapper.getIncludedClassesWithInners();
+            for (JavaClass cls : classes) {
+                classList.add(cls.getFullName());
             }
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("type", "class-list");
+            result.put("count", classList.size());
+            result.put("classes", classList);
+
+            ctx.json(result);
+        } catch (Exception e) {
+            e.printStackTrace();
+            ctx.status(500).json(Map.of("error", "Failed to load class list: " + e.getMessage()));
         }
     }
 
-    class SelectedTextHandler implements HttpHandler {
-        @Override
-        public void handle(HttpExchange exchange) throws IOException {
-            try {
-                JTextArea textArea = findTextArea(mainWindow.getTabbedPane().getSelectedComponent());
-                String selectedText = textArea != null ? textArea.getSelectedText() : null;
+    private void handleSelectedText(Context ctx) {
+        try {
+            JTextArea textArea = findTextArea(mainWindow.getTabbedPane().getSelectedComponent());
+            String selectedText = textArea != null ? textArea.getSelectedText() : null;
 
-                Map<String, String> result = new HashMap<>();
-                result.put("selectedText", selectedText != null ? selectedText : "");
-                sendJson(exchange, 200, result);
-            } catch (Exception e) {
-                e.printStackTrace();
-                sendJson(exchange, 500, Map.of("error", "Internal error while trying to fetch selected text: " + e.getMessage()));
-            }
+            Map<String, String> result = new HashMap<>();
+            result.put("selectedText", selectedText != null ? selectedText : "");
+            ctx.json(result);
+        } catch (Exception e) {
+            e.printStackTrace();
+            ctx.status(500).json(Map.of("error", "Internal error while trying to fetch selected text: " + e.getMessage()));
         }
     }
 
-    class MethodByNameHandler implements HttpHandler {
-        @Override
-        public void handle(HttpExchange exchange) throws IOException {
-            Map<String, String> params = queryToMap(exchange.getRequestURI().getQuery());
-            String methodName = params.get("method");
+    private void handleMethodByName(Context ctx) {
+        String methodName = ctx.queryParam("method");
 
-            if (methodName == null || methodName.isEmpty()) {
-                sendJson(exchange, 400, Map.of("error", "Missing 'method' parameter"));
+        if (methodName == null || methodName.isEmpty()) {
+            ctx.status(400).json(Map.of("error", "Missing 'method' parameter"));
+            return;
+        }
+
+        try {
+            JadxWrapper wrapper = mainWindow.getWrapper();
+            if (wrapper == null) {
+                ctx.status(500).json(Map.of("error", "JadxWrapper not initialized"));
                 return;
             }
 
-            try {
-                JadxWrapper wrapper = mainWindow.getWrapper();
-                if (wrapper == null) {
-                    sendJson(exchange, 500, Map.of("error", "JadxWrapper not initialized"));
-                    return;
-                }
-
-                for (JavaClass cls : wrapper.getIncludedClassesWithInners()) {
-                    for (jadx.api.JavaMethod method : cls.getMethods()) {
-                        if (method.getName().equalsIgnoreCase(methodName)) {
-                            String codeStr;
-                            try {
-                                codeStr = method.getCodeStr();
-                            } catch (Exception e) {
-                                codeStr = "Error retrieving code: " + e.getMessage();
-                            }
-
-                            Map<String, Object> result = new HashMap<>();
-                            result.put("class", cls.getFullName());
-                            result.put("method", method.getName());
-                            result.put("decl", String.valueOf(method.getCodeNodeRef()));
-                            result.put("code", codeStr);
-                            sendJson(exchange, 200, result);
-                            return;
+            for (JavaClass cls : wrapper.getIncludedClassesWithInners()) {
+                for (jadx.api.JavaMethod method : cls.getMethods()) {
+                    if (method.getName().equalsIgnoreCase(methodName)) {
+                        String codeStr;
+                        try {
+                            codeStr = method.getCodeStr();
+                        } catch (Exception e) {
+                            codeStr = "Error retrieving code: " + e.getMessage();
                         }
+
+                        Map<String, Object> result = new HashMap<>();
+                        result.put("class", cls.getFullName());
+                        result.put("method", method.getName());
+                        result.put("decl", String.valueOf(method.getCodeNodeRef()));
+                        result.put("code", codeStr);
+                        ctx.json(result);
+                        return;
                     }
                 }
-
-                sendJson(exchange, 404, Map.of("error", "Method not found in any class."));
-            } catch (Exception e) {
-                e.printStackTrace(); // Also log this to your IDE or terminal
-                sendJson(exchange, 500, Map.of("error", "Internal error while trying to retrieve method code: " + e.getMessage()));
             }
+
+            ctx.status(404).json(Map.of("error", "Method not found in any class."));
+        } catch (Exception e) {
+            e.printStackTrace();
+            ctx.status(500).json(Map.of("error", "Internal error while trying to retrieve method code: " + e.getMessage()));
         }
     }
 
+    private void handleClassSource(Context ctx) {
+        String className = ctx.queryParam("class");
 
+        if (className == null || className.isEmpty()) {
+            ctx.status(400).json(Map.of("error", "Missing 'class' parameter."));
+            return;
+        }
 
-    class ClassSourceHandler implements HttpHandler {
-        @Override
-        public void handle(HttpExchange exchange) throws IOException {
-            Map<String, String> params = queryToMap(exchange.getRequestURI().getQuery());
-            String className = params.get("class");
+        try {
+            JadxWrapper wrapper = mainWindow.getWrapper();
+            for (JavaClass cls : wrapper.getIncludedClassesWithInners()) {
+                if (cls.getFullName().equals(className)) {
+                    ctx.json(Map.of(
+                            "class", className,
+                            "type", "code/java",
+                            "content", cls.getCode()
+                    ));
+                    return;
+                }
+            }
+            ctx.status(404).json(Map.of("error", "Class not found."));
+        } catch (Exception e) {
+            e.printStackTrace();
+            ctx.status(500).json(Map.of("error", "Internal error retrieving class source: " + e.getMessage()));
+        }
+    }
 
-            if (className == null || className.isEmpty()) {
-                sendJson(exchange, 400, Map.of("error", "Missing 'class' parameter."));
+    private void handleSearchMethod(Context ctx) {
+        String methodName = ctx.queryParam("method");
+        List<String> results = new ArrayList<>();
+
+        if (methodName == null) {
+            ctx.status(400).json(Map.of("error", "Missing method parameter"));
+            return;
+        }
+
+        try {
+            JadxWrapper wrapper = mainWindow.getWrapper();
+            for (JavaClass cls : wrapper.getIncludedClassesWithInners()) {
+                if (cls.getCode().contains(methodName)) {
+                    results.add(cls.getFullName());
+                }
+            }
+            ctx.json(results);
+        } catch (Exception e) {
+            e.printStackTrace();
+            ctx.status(500).json(Map.of("error", "Internal error during method search: " + e.getMessage()));
+        }
+    }
+
+    private void handleMethodsOfClass(Context ctx) {
+        String className = ctx.queryParam("class");
+
+        try {
+            JadxWrapper wrapper = mainWindow.getWrapper();
+            for (JavaClass cls : wrapper.getIncludedClassesWithInners()) {
+                if (cls.getFullName().equals(className)) {
+                    List<String> methods = new ArrayList<>();
+                    for (JavaMethod m : cls.getMethods()) {
+                        String s = m.getAccessFlags() + " " + m.getReturnType() + " " + m.getName() + m.getMethodNode() + m.getFullName();
+                        methods.add(s);
+                    }
+                    ctx.json(methods);
+                    return;
+                }
+            }
+            ctx.status(404).json(Map.of("error", "Class not found."));
+        } catch (Exception e) {
+            e.printStackTrace();
+            ctx.status(500).json(Map.of("error", "Internal error retrieving methods: " + e.getMessage()));
+        }
+    }
+
+    private void handleFieldsOfClass(Context ctx) {
+        String className = ctx.queryParam("class");
+
+        try {
+            JadxWrapper wrapper = mainWindow.getWrapper();
+            for (JavaClass cls : wrapper.getIncludedClassesWithInners()) {
+                if (cls.getFullName().equals(className)) {
+                    List<String> fields = new ArrayList<>();
+                    for (JavaField f : cls.getFields()) {
+                        String s = f.getAccessFlags() + " " + f.getType() + " " + f.getName();
+                        fields.add(s);
+                    }
+                    ctx.json(fields);
+                    return;
+                }
+            }
+            ctx.status(404).json(Map.of("error", "Class not found."));
+        } catch (Exception e) {
+            e.printStackTrace();
+            ctx.status(500).json(Map.of("error", "Internal error retrieving fields: " + e.getMessage()));
+        }
+    }
+
+    private void handleSmaliOfClass(Context ctx) {
+        String className = ctx.queryParam("class");
+
+        if (className == null || className.isEmpty()) {
+            ctx.status(400).json(Map.of("error", "Missing 'class' parameter."));
+            return;
+        }
+
+        try {
+            JadxWrapper wrapper = mainWindow.getWrapper();
+            for (JavaClass cls : wrapper.getIncludedClassesWithInners()) {
+                if (cls.getFullName().equals(className)) {
+                    ctx.json(Map.of(
+                            "class", className,
+                            "type", "code/smali",
+                            "content", cls.getSmali()
+                    ));
+                    return;
+                }
+            }
+            ctx.status(404).json(Map.of("error", "Class not found."));
+        } catch (Exception e) {
+            e.printStackTrace();
+            ctx.status(500).json(Map.of("error", "Internal error retrieving class source: " + e.getMessage()));
+        }
+    }
+
+    private void handleManifest(Context ctx) {
+        try {
+            JadxWrapper wrapper = mainWindow.getWrapper();
+            List<ResourceFile> resources = wrapper.getResources();
+
+            ResourceFile manifest = AndroidManifestParser.getAndroidManifest(resources);
+            if (manifest == null) {
+                ctx.status(404).json(Map.of("error", "AndroidManifest.xml not found."));
                 return;
             }
 
-            try {
-                JadxWrapper wrapper = mainWindow.getWrapper();
-                for (JavaClass cls : wrapper.getIncludedClassesWithInners()) {
-                    if (cls.getFullName().equals(className)) {
-                        sendJson(exchange, 200, Map.of(
-                                "class", className,
-                                "type", "code/java",
-                                "content", cls.getCode()
-                        ));
-                        return;
-                    }
-                }
-                sendJson(exchange, 404, Map.of("error", "Class not found."));
-            } catch (Exception e) {
-                e.printStackTrace();
-                sendJson(exchange, 500, Map.of("error", "Internal error retrieving class source: " + e.getMessage()));
-            }
+            ResContainer container = manifest.loadContent();
+            String manifestContent = container.getText().getCodeStr();
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("name", manifest.getOriginalName());
+            result.put("type", "manifest/xml");
+            result.put("content", manifestContent);
+
+            ctx.json(result);
+        } catch (Exception e) {
+            e.printStackTrace();
+            ctx.status(500).json(Map.of("error", "Internal error retrieving AndroidManifest.xml: " + e.getMessage()));
         }
     }
 
+    private void handleMainApplication(Context ctx) {
+        try {
+            JadxWrapper wrapper = mainWindow.getWrapper();
+            List<ResourceFile> resources = wrapper.getResources();
 
-    class SearchMethodHandler implements HttpHandler {
-        @Override
-        public void handle(HttpExchange exchange) throws IOException {
-            Map<String, String> params = queryToMap(exchange.getRequestURI().getQuery());
-            String methodName = params.get("method");
-            List<String> results = new ArrayList<>();
+            AndroidManifestParser parser = new AndroidManifestParser(
+                    AndroidManifestParser.getAndroidManifest(resources),
+                    EnumSet.of(AppAttribute.APPLICATION),
+                    wrapper.getArgs().getSecurity()
+            );
 
-            if (methodName == null) {
-                sendJson(exchange, 400, Map.of("error", "Missing method parameter"));
+            if (!parser.isManifestFound()) {
+                ctx.status(404).json(Map.of("error", "AndroidManifest.xml not found."));
                 return;
             }
 
-            try {
-                JadxWrapper wrapper = mainWindow.getWrapper();
-                for (JavaClass cls : wrapper.getIncludedClassesWithInners()) {
-                    if (cls.getCode().contains(methodName)) {
-                        results.add(cls.getFullName());
-                    }
-                }
-                sendJson(exchange, 200, results);
-            } catch (Exception e) {
-                e.printStackTrace();
-                sendJson(exchange, 500, Map.of("error", "Internal error during method search: " + e.getMessage()));
-            }
-        }
-    }
+            ApplicationParams results = parser.parse();
 
-
-    class MethodsOfClassHandler implements HttpHandler {
-        @Override
-        public void handle(HttpExchange exchange) throws IOException {
-            Map<String, String> params = queryToMap(exchange.getRequestURI().getQuery());
-            String className = params.get("class");
-
-            try {
-                JadxWrapper wrapper = mainWindow.getWrapper();
-                for (JavaClass cls : wrapper.getIncludedClassesWithInners()) {
-                    if (cls.getFullName().equals(className)) {
-                        List<String> methods = new ArrayList<>();
-                        for (JavaMethod m : cls.getMethods()) {
-                            String s = m.getAccessFlags() + " " + m.getReturnType() + " " + m.getName() + m.getMethodNode() + m.getFullName();
-                            methods.add(s);
-                        }
-                        sendJson(exchange, 200, methods);
-                        return;
-                    }
-                }
-                sendJson(exchange, 404, Map.of("error", "Class not found."));
-            } catch (Exception e) {
-                e.printStackTrace();
-                sendJson(exchange, 500, Map.of("error", "Internal error retrieving methods: " + e.getMessage()));
-            }
-        }
-    }
-
-
-    class FieldsOfClassHandler implements HttpHandler {
-        @Override
-        public void handle(HttpExchange exchange) throws IOException {
-            Map<String, String> params = queryToMap(exchange.getRequestURI().getQuery());
-            String className = params.get("class");
-
-            try {
-                JadxWrapper wrapper = mainWindow.getWrapper();
-                for (JavaClass cls : wrapper.getIncludedClassesWithInners()) {
-                    if (cls.getFullName().equals(className)) {
-                        List<String> fields = new ArrayList<>();
-                        for (JavaField f : cls.getFields()) {
-                            String s = f.getAccessFlags() + " " + f.getType() + " " + f.getName();
-                            fields.add(s);
-                        }
-                        sendJson(exchange, 200, fields);
-                        return;
-                    }
-                }
-                sendJson(exchange, 404, Map.of("error", "Class not found."));
-            } catch (Exception e) {
-                e.printStackTrace();
-                sendJson(exchange, 500, Map.of("error", "Internal error retrieving fields: " + e.getMessage()));
-            }
-        }
-    }
-
-
-    class SmaliOfClassHandler implements HttpHandler {
-        @Override
-        public void handle(HttpExchange exchange) throws IOException {
-            Map<String, String> params = queryToMap(exchange.getRequestURI().getQuery());
-            String className = params.get("class");
-
-            if (className == null || className.isEmpty()) {
-                sendJson(exchange, 400, Map.of("error", "Missing 'class' parameter."));
+            if (results.getApplication() == null) {
+                ctx.status(404).json(Map.of("error", "Failed to get application from manifest " + results.getApplication()));
                 return;
             }
 
-            try {
-                JadxWrapper wrapper = mainWindow.getWrapper();
-                for (JavaClass cls : wrapper.getIncludedClassesWithInners()) {
-                    if (cls.getFullName().equals(className)) {
-                        sendJson(exchange, 200, Map.of(
-                                "class", className,
-                                "type", "code/smali",
-                                "content", cls.getSmali()
-                        ));
-                        return;
-                    }
-                }
-                sendJson(exchange, 404, Map.of("error", "Class not found."));
-            } catch (Exception e) {
-                e.printStackTrace();
-                sendJson(exchange, 500, Map.of("error", "Internal error retrieving class source: " + e.getMessage()));
+            JavaClass applicationClass = results.getApplicationJavaClass(wrapper.getDecompiler());
+            if (applicationClass == null) {
+                ctx.status(404).json(Map.of("error", "Failed to get application class: " + results.getApplication()));
+                return;
             }
+
+            // Fetch all classes based on manifest package name
+            String manifestPkg = parser.parse().getApplication();// This is the manifest `package`
+            System.out.println(manifestPkg);
+            List<JavaClass> matchedClasses = wrapper.getDecompiler().getClasses().stream()
+                    .filter(cls -> cls.getFullName().startsWith(manifestPkg))
+                    .collect(Collectors.toList());
+
+            List<Map<String, Object>> classesInfo = new ArrayList<>();
+            for (JavaClass cls : matchedClasses) {
+                Map<String, Object> classInfo = new HashMap<>();
+                classInfo.put("name", cls.getFullName());
+                classInfo.put("type", "code/java");
+                classInfo.put("content", cls.getCode());
+                classesInfo.add(classInfo);
+            }
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("applicationClass", applicationClass.getFullName());
+            result.put("allClassesInPackage", classesInfo);
+
+            ctx.json(result);
+        } catch (Exception e) {
+            e.printStackTrace();
+            ctx.status(500).json(Map.of("error", "Internal error retrieving AndroidManifest.xml: " + e.getMessage()));
         }
     }
 
-    class ManifestHandler implements HttpHandler {
-        @Override
-        public void handle(HttpExchange exchange) throws IOException {
-            try {
-                JadxWrapper wrapper = mainWindow.getWrapper();
-                List<ResourceFile> resources = wrapper.getResources();
 
-                ResourceFile manifest = AndroidManifestParser.getAndroidManifest(resources);
-                if (manifest == null) {
-                    sendJson(exchange, 404, Map.of("error", "AndroidManifest.xml not found."));
-                    return;
-                }
+    private void handleMainActivity(Context ctx) {
+        try {
+            JadxWrapper wrapper = mainWindow.getWrapper();
+            List<ResourceFile> resources = wrapper.getResources();
 
-                ResContainer container = manifest.loadContent();
-                String manifestContent = container.getText().getCodeStr();
-
-                Map<String, Object> result = new HashMap<>();
-                result.put("name", manifest.getOriginalName());
-                result.put("type", "manifest/xml");
-                result.put("content", manifestContent);
-
-                sendJson(exchange, 200, result);
-            } catch (Exception e) {
-                e.printStackTrace();
-                sendJson(exchange, 500,
-                        Map.of("error", "Internal error retrieving AndroidManifest.xml: " + e.getMessage()));
+            AndroidManifestParser parser = new AndroidManifestParser(AndroidManifestParser.getAndroidManifest(resources), EnumSet.of(AppAttribute.MAIN_ACTIVITY), wrapper.getArgs().getSecurity());
+            if (!parser.isManifestFound()) {
+                ctx.status(404).json(Map.of("error", "AndroidManifest.xml not found."));
+                return;
             }
+
+            ApplicationParams results = parser.parse();
+            if (results.getMainActivity() == null) {
+                ctx.status(404).json(Map.of("error", "Failed to get main activity from manifest"));
+                return;
+            }
+
+            JavaClass mainActivityClass = results.getMainActivityJavaClass(wrapper.getDecompiler());
+
+            if (mainActivityClass == null) {
+                ctx.status(404).json(Map.of("error", "Failed to get activity class: " + results.getApplication()));
+                return;
+            }
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("name", mainActivityClass.getFullName());
+            result.put("type", "code/java");
+            result.put("content", mainActivityClass.getCode());
+
+            ctx.json(result);
+        } catch (Exception e) {
+            e.printStackTrace();
+            ctx.status(500).json(Map.of("error", "Internal error retrieving AndroidManifest.xml: " + e.getMessage()));
         }
     }
-
-    class MainApplicationHandler implements HttpHandler {
-        @Override
-        public void handle(HttpExchange exchange) throws IOException {
-            try {
-                JadxWrapper wrapper = mainWindow.getWrapper();
-                List<ResourceFile> resources = wrapper.getResources();
-
-                AndroidManifestParser parser = new AndroidManifestParser(AndroidManifestParser.getAndroidManifest(resources), EnumSet.of(AppAttribute.APPLICATION), wrapper.getArgs().getSecurity());
-                if (!parser.isManifestFound()) {
-                    sendJson(exchange, 404, Map.of("error", "AndroidManifest.xml not found."));
-                    return;
-                }
-
-                ApplicationParams results = parser.parse();
-                if (results.getApplication() == null) {
-                    sendJson(exchange, 404, Map.of("error", "Failed to get application from manifest"));
-                    return;
-                }
-
-                JavaClass applicationClass = results.getApplicationJavaClass(wrapper.getDecompiler());
-
-                if (applicationClass == null) {
-                    sendJson(exchange, 404, Map.of("error", "Failed to get application class: " + results.getApplication()));
-                    return;
-                }
-
-                Map<String, Object> result = new HashMap<>();
-                result.put("name", applicationClass.getFullName());
-                result.put("type", "code/java");
-                result.put("content", applicationClass.getCode());
-
-                sendJson(exchange, 200, result);
-            } catch (Exception e) {
-                e.printStackTrace();
-                sendJson(exchange, 500,
-                        Map.of("error", "Internal error retrieving AndroidManifest.xml: " + e.getMessage()));
-            }
-        }
-    }
-
-    class MainActivityHandler implements HttpHandler {
-        @Override
-        public void handle(HttpExchange exchange) throws IOException {
-            try {
-                JadxWrapper wrapper = mainWindow.getWrapper();
-                List<ResourceFile> resources = wrapper.getResources();
-
-                AndroidManifestParser parser = new AndroidManifestParser(AndroidManifestParser.getAndroidManifest(resources), EnumSet.of(AppAttribute.MAIN_ACTIVITY), wrapper.getArgs().getSecurity());
-                if (!parser.isManifestFound()) {
-                    sendJson(exchange, 404, Map.of("error", "AndroidManifest.xml not found."));
-                    return;
-                }
-
-                ApplicationParams results = parser.parse();
-                if (results.getMainActivity() == null) {
-                    sendJson(exchange, 404, Map.of("error", "Failed to get main activity from manifest"));
-                    return;
-                }
-
-                JavaClass mainActivityClass = results.getMainActivityJavaClass(wrapper.getDecompiler());
-
-                if (mainActivityClass == null) {
-                    sendJson(exchange, 404, Map.of("error", "Failed to get activity class: " + results.getApplication()));
-                    return;
-                }
-
-                Map<String, Object> result = new HashMap<>();
-                result.put("name", mainActivityClass.getFullName());
-                result.put("type", "code/java");
-                result.put("content", mainActivityClass.getCode());
-
-                sendJson(exchange, 200, result);
-            } catch (Exception e) {
-                e.printStackTrace();
-                sendJson(exchange, 500,
-                        Map.of("error", "Internal error retrieving AndroidManifest.xml: " + e.getMessage()));
-            }
-        }
-    }
-
 
     // ----------------- Helpers ------------------
 
@@ -493,27 +461,4 @@ public class JadxAIMCP implements JadxPlugin {
         }
         return null;
     }
-
-    private void sendJson(HttpExchange exchange, int statusCode, Object responseObj) throws IOException {
-        String json = gson.toJson(responseObj);
-        byte[] bytes = json.getBytes(StandardCharsets.UTF_8);
-        exchange.getResponseHeaders().add("Content-Type", "application/json");
-        exchange.sendResponseHeaders(statusCode, bytes.length);
-        try (OutputStream os = exchange.getResponseBody()) {
-            os.write(bytes);
-        }
-    }
-
-    private Map<String, String> queryToMap(String query) {
-        Map<String, String> map = new HashMap<>();
-        if (query == null) return map;
-        for (String param : query.split("&")) {
-            String[] pair = param.split("=");
-            if (pair.length == 2) {
-                map.put(pair[0], java.net.URLDecoder.decode(pair[1], StandardCharsets.UTF_8));
-            }
-        }
-        return map;
-    }
-
 }
