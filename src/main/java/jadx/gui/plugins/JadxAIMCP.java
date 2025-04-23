@@ -12,9 +12,11 @@ import jadx.api.plugins.JadxPlugin;
 import jadx.api.plugins.JadxPluginContext;
 import jadx.api.plugins.JadxPluginInfo;
 import jadx.api.plugins.JadxPluginInfoBuilder;
+import jadx.api.security.IJadxSecurity;
 import jadx.core.utils.android.AndroidManifestParser;
 import jadx.core.utils.android.AppAttribute;
 import jadx.core.utils.android.ApplicationParams;
+import jadx.core.utils.exceptions.JadxRuntimeException;
 import jadx.core.xmlgen.ResContainer;
 import jadx.gui.JadxWrapper;
 import jadx.gui.ui.MainWindow;
@@ -22,8 +24,14 @@ import jadx.gui.ui.MainWindow;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.w3c.dom.Element;
+import org.w3c.dom.Document;
+
 import javax.swing.*;
 import java.awt.*;
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -349,35 +357,29 @@ public class JadxAIMCP implements JadxPlugin {
             JadxWrapper wrapper = mainWindow.getWrapper();
             List<ResourceFile> resources = wrapper.getResources();
 
-            AndroidManifestParser parser = new AndroidManifestParser(
-                    AndroidManifestParser.getAndroidManifest(resources),
-                    EnumSet.of(AppAttribute.APPLICATION),
-                    wrapper.getArgs().getSecurity()
-            );
-
-            if (!parser.isManifestFound()) {
+            // Get the manifest ResourceFile
+            ResourceFile manifestRes = AndroidManifestParser.getAndroidManifest(resources);
+            if (manifestRes == null) {
                 ctx.status(404).json(Map.of("error", "AndroidManifest.xml not found."));
                 return;
             }
 
-            ApplicationParams results = parser.parse();
+            // Load manifest content and parse XML
+            String manifestXml = manifestRes.loadContent().getText().getCodeStr();
+            Document manifestDoc = parseManifestXml(manifestXml, wrapper.getArgs().getSecurity());
 
-            if (results.getApplication() == null) {
-                ctx.status(404).json(Map.of("error", "Failed to get application from manifest " + results.getApplication()));
+            // Extract the package name from the <manifest> tag
+            Element manifestElement = (Element) manifestDoc.getElementsByTagName("manifest").item(0);
+            String packageName = manifestElement.getAttribute("package");
+
+            if (packageName.isEmpty()) {
+                ctx.status(404).json(Map.of("error", "Package name not found in manifest."));
                 return;
             }
 
-            JavaClass applicationClass = results.getApplicationJavaClass(wrapper.getDecompiler());
-            if (applicationClass == null) {
-                ctx.status(404).json(Map.of("error", "Failed to get application class: " + results.getApplication()));
-                return;
-            }
-
-            // Fetch all classes based on manifest package name
-            String manifestPkg = parser.parse().getApplication();// This is the manifest `package`
-            System.out.println(manifestPkg);
+            // Filter classes under this package
             List<JavaClass> matchedClasses = wrapper.getDecompiler().getClasses().stream()
-                    .filter(cls -> cls.getFullName().startsWith(manifestPkg))
+                    .filter(cls -> cls.getFullName().startsWith(packageName))
                     .collect(Collectors.toList());
 
             List<Map<String, Object>> classesInfo = new ArrayList<>();
@@ -390,15 +392,16 @@ public class JadxAIMCP implements JadxPlugin {
             }
 
             Map<String, Object> result = new HashMap<>();
-            result.put("applicationClass", applicationClass.getFullName());
             result.put("allClassesInPackage", classesInfo);
 
             ctx.json(result);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Error handling main application", e);
             ctx.status(500).json(Map.of("error", "Internal error retrieving AndroidManifest.xml: " + e.getMessage()));
         }
     }
+
+
 
 
     private void handleMainActivity(Context ctx) {
@@ -460,5 +463,16 @@ public class JadxAIMCP implements JadxPlugin {
             }
         }
         return null;
+    }
+
+    // Reuse JADX's secure XML parsing logic
+    private Document parseManifestXml(String xmlContent, IJadxSecurity security) {
+        try (InputStream xmlStream = new ByteArrayInputStream(xmlContent.getBytes(StandardCharsets.UTF_8))) {
+            Document doc = security.parseXml(xmlStream);
+            doc.getDocumentElement().normalize();
+            return doc;
+        } catch (Exception e) {
+            throw new JadxRuntimeException("Failed to parse AndroidManifest.xml", e);
+        }
     }
 }
