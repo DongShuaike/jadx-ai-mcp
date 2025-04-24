@@ -187,6 +187,11 @@ Configure and add MCP server to LLM file:
 ```bash
 nano ~/.config/Claude/claude_desktop_config.json
 ```
+
+For:
+   - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+   - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+   
 And following content in it:
 ```json
 {
@@ -203,6 +208,12 @@ And following content in it:
     }
 }
 ```
+
+Replace:
+
+- `path/to/uv` with the actual path to your `uv` executable
+- `path/to/jadx-mcp-server` with the absolute path to where you cloned this
+repository
 
 Then, navigate code and interact via real-time code review prompts using the built-in integration.
 
