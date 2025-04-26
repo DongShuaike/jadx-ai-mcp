@@ -87,9 +87,9 @@ public class JadxAIMCP implements JadxPlugin {
             app.get("/fields-of-class", this::handleFieldsOfClass);
             app.get("/smali-of-class", this::handleSmaliOfClass);
             app.get("/manifest", this::handleManifest);
-            app.get("/main-application", this::handleMainApplication);
+            app.get("/main-application-classes-code", this::handleMainApplication);
             app.get("/main-activity", this::handleMainActivity);
-            app.get("/main-application-class-names", this::handleMainApplicationClassNames);
+            app.get("/main-application-classes-names", this::handleMainApplicationClassNames);
 
             logger.info("JADX MCP plugin HTTP server started at http://127.0.0.1:8650/");
         } catch (Exception e) {
