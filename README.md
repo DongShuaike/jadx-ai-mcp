@@ -358,17 +358,17 @@ Aletrnative and better approach is to create a custom MCP Client to and use it w
 
 ## 🛣️ Future Roadmap
 
- - Add Support for apktool
+ [-] Add Support for apktool
 
- - Add support for hermes code (ReactNative Application)
+ [ ] Add support for hermes code (ReactNative Application)
 
- - Add more useful MCP Tools
+ [ ] Add more useful MCP Tools
 
- - Make LLM be able to modify code on JADX
+ [ ] Make LLM be able to modify code on JADX
 
- - Add prompts templates, give llm access to Android APK Files as Resources
+ [ ] Add prompts templates, give llm access to Android APK Files as Resources
 
- - **END-GOAL** : Make all android reverse engineering and APK modification tools Connect with single MCP server to make reverse engineering apk files as easy as possible purely from vibes.
+ [ ] **END-GOAL** : Make all android reverse engineering and APK modification tools Connect with single MCP server to make reverse engineering apk files as easy as possible purely from vibes.
 
 
 ## NOTE For Contributors
