@@ -288,13 +288,13 @@ If you are on linux you can directly run below command to install it:
 
 2. Download and run any LLM that has capability to invoke tool.
 
-For example, the llama 3.1 has capability to invoke the tool.
+For example, the llama 3.1 has capability to invoke the tool. However, during testing I was not able to invoke tool via llama.3.1 and so for this example I am using gemma3:4b [Again this whole setup is based on LLM Capabilities]
 
 You can run it using following command:
 
-> ollama run llama3.1:8b
+> ollama run gemma3:4b
 
-[Note]: Kindly note the above command will fetch the model with 8b parameters. If you have stronger hardware kindly fetch higher parameter model for better performance.
+[Note]: Kindly note the above command will fetch the model with 4b parameters. If you have stronger hardware kindly fetch higher parameter model for better performance.
 
 3. Serve the Ollama on API server using following command
 
@@ -314,7 +314,47 @@ Kindly visit the github repo of Open Web UI and run it as per your requirement, 
 After running above command head over to http://localhost:8080/ and you will be able to see Open Web UI screen as shown in Image below:
 
 ```
+<div align="center">
+  <a href="https://ollama.com">
+    <img alt="ollama" src="https://github.com/user-attachments/assets/7c520551-e178-41d3-afd2-903b11b68bda">
+  </a>
+</div>
 
+```bash
+If you don't see the gemma:3.4B as shown in image above, check the troubleshooting guide from Open Web UI: https://docs.openwebui.com/troubleshooting/
+
+You must also observe the hammer icon indicating the availability of the tool.
+
+```
+
+![image](https://github.com/user-attachments/assets/3aaa9be0-050a-494e-8108-46222f1dbb3f)
+
+```bash
+If not avaiable, then got `Settings -> Admin Panel -> Settings -> Tools` and verify the URL of the MCP Server.
+```
+
+![image](https://github.com/user-attachments/assets/5c3d1e76-c7e0-412a-94c8-1be320489644)
+
+```bash
+If everyhting is good, You must also see the traffic logs on MCP Server as well
+```
+
+![image](https://github.com/user-attachments/assets/9cf8da8e-c953-4b7c-954d-6c9607e91ad5)
+
+```bash
+Now enter the prompt to invoke the MCP tool like following.
+```
+
+![image](https://github.com/user-attachments/assets/c557038d-2ba5-4983-9fb2-f912b1d0c21a)
+
+
+```bash
+The Local LLM based on it's capability must have invoked the MCP tool as shown in above image.
+
+If not then again, Open Source LLMs are still catching up with tool inoking capabilities and soon we will have models with Strong tool calling capabilities.
+
+Aletrnative and better approach is to create a custom MCP Client to and use it with MCP Server. 
+```
 
 ## 🛣️ Future Roadmap
 
