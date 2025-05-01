@@ -128,7 +128,9 @@ The following MCP tools are available:
 
 ### 1. Downlaod from Releases: https://github.com/zinja-coder/jadx-ai-mcp/releases
 
-**Note:** Download both `jadx-ai-mcp-<version>.jar` and `jadx-mcp-server-<version>.zip` files.
+> [!NOTE]
+>
+> Download both `jadx-ai-mcp-<version>.jar` and `jadx-mcp-server-<version>.zip` files.
 
 
 ```bash
@@ -320,41 +322,29 @@ After running above command head over to http://localhost:8080/ and you will be 
   </a>
 </div>
 
-```bash
 If you don't see the gemma:3.4B as shown in image above, check the troubleshooting guide from Open Web UI: https://docs.openwebui.com/troubleshooting/
 
 You must also observe the hammer icon indicating the availability of the tool.
 
-```
-
 ![image](https://github.com/user-attachments/assets/3aaa9be0-050a-494e-8108-46222f1dbb3f)
 
-```bash
 If not avaiable, then got `Settings -> Admin Panel -> Settings -> Tools` and verify the URL of the MCP Server.
-```
 
 ![image](https://github.com/user-attachments/assets/5c3d1e76-c7e0-412a-94c8-1be320489644)
 
-```bash
 If everyhting is good, You must also see the traffic logs on MCP Server as well
-```
 
 ![image](https://github.com/user-attachments/assets/9cf8da8e-c953-4b7c-954d-6c9607e91ad5)
 
-```bash
 Now enter the prompt to invoke the MCP tool like following.
-```
 
 ![image](https://github.com/user-attachments/assets/c557038d-2ba5-4983-9fb2-f912b1d0c21a)
 
-
-```bash
 The Local LLM based on it's capability must have invoked the MCP tool as shown in above image.
 
 If not then again, Open Source LLMs are still catching up with tool inoking capabilities and soon we will have models with Strong tool calling capabilities.
 
 Aletrnative and better approach is to create a custom MCP Client to and use it with MCP Server. 
-```
 
 ## 🛣️ Future Roadmap
 
