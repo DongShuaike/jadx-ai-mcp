@@ -411,7 +411,8 @@ Use responsibly. Respect intellectual property. Follow ethical hacking practices
 - Found it useful? Give it a ⭐️
 - Got ideas? Open an [issue](https://github.com/zinja-coder/jadx-ai-mcp/issues) or submit a PR
 - Built something on top? DM me or mention me — I’ll add it to the README!
-
+- Do you like my work and keep it going? Sponsor this project.
+  
 ---
 
 Built with ❤️ for the reverse engineering and AI communities.
