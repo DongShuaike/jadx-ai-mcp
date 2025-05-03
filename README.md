@@ -265,9 +265,13 @@ This plugin allows total control over the GUI and internal project model to supp
 
 ---
 
-## Running on Local LLM Using Ollama and Custom MPC Client
+## Running on Local LLM Using Ollama and Zin MCP Client
 
-!Coming Soon...
+<div align="center">
+    <a href="https://github.com/zinja-coder/zin-mcp-client">
+    <img alt="zin-mcp-client" height="360px" widht="480px" src="https://github.com/user-attachments/assets/0e8e0ecd-0520-422e-a007-03dc62c4118e">
+    </a>
+</div>
 
 ## Running on Local LLM using Ollama and Open Web UI
 
