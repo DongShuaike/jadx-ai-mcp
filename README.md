@@ -388,6 +388,8 @@ Also huge thanks to [@aaddrick](https://github.com/aaddrick) for developing Clau
 
 And in last thanks to [@anthropics](https://github.com/anthropics) for developing the Model Context Protocol and [@FastMCP](https://github.com/modelcontextprotocol/python-sdk) team
 
+Apart from this, huge thanks to all open source projects which serve as a dependencies for this project and which made this possible.
+
 ## 📄 License
 
 JADX-AI-MCP and all related projects inherits the Apache 2.0 License from the original JADX repository.
