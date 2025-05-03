@@ -51,8 +51,9 @@ It is combination of two tools:
 
 ---
 
-# Other MCP Servers For Android Reverse Engineering
+# Other projects in Zin MCP Suite
  - **[APKTool-MCP-Server](https://github.com/zinja-coder/apktool-mcp-server)**
+ - **[JADX-MCP-Server](https://github.com/zinja-coder/jadx-mcp-server)**
 
 ## Current MCP Tools
 
@@ -189,6 +190,14 @@ uv pip install httpx fastmcp
 # The setup for jadx-ai-mcp and jadx_mcp_server is done.
 ```
 
+## Running on Local LLM Using Ollama and Zin MCP Client
+
+<div align="center">
+    <a href="https://github.com/zinja-coder/zin-mcp-client">
+    <img alt="zin-mcp-client" height="360px" widht="480px" src="https://github.com/user-attachments/assets/0e8e0ecd-0520-422e-a007-03dc62c4118e">
+    </a>
+</div>
+
 ## 🤖 2. Claude Desktop Setup
 
 Make sure Claude Desktop is running with MCP enabled.
@@ -264,95 +273,6 @@ This plugin allows total control over the GUI and internal project model to supp
 - Receiving back suggestions inline
 
 ---
-
-## Running on Local LLM Using Ollama and Zin MCP Client
-
-<div align="center">
-    <a href="https://github.com/zinja-coder/zin-mcp-client">
-    <img alt="zin-mcp-client" height="360px" widht="480px" src="https://github.com/user-attachments/assets/0e8e0ecd-0520-422e-a007-03dc62c4118e">
-    </a>
-</div>
-
-## Running on Local LLM using Ollama and Open Web UI
-
-Current State Of Local LLM and MCPs:
-
-Currently, proprietary API-based models like Anthropic’s Claude tend to be more proficient proficient at tool calling. 
-
-However, the open-source world is advancing rapidly! Models specifically fine-tuned on function calling datasets are becoming increasingly available through Ollama. Researching models tagged with `function calling` or `tool use` on platforms like Hugging Face or [checking discussions on communities like r/LocalLLaMA is key to finding capable local options.](https://www.reddit.com/r/LocalLLaMA/search/?q=Best+open+source+LLM+for+function+calling+mcp&cId=c72f65d2-d327-41b0-8e6d-73e889385cda&iId=795a5a92-245d-42d2-ae60-47dfff7dbef0)
-
-Putting these aside, Here is a step by step guide on how to run the MCP server with Local LLM so you don't have to share your critical pentesting data with remote LLM Provider.
-
-<div align="center">
-  <a href="https://ollama.com">
-    <img alt="ollama" height="200px" src="https://github.com/ollama/ollama/assets/3325447/0d0b44e2-8f4a-4e99-9b52-a5c1c741c8f7">
-  </a>
-</div>
-
-```bash
-1. Download and Install ollama: https://ollama.com/download
-
-If you are on linux you can directly run below command to install it:
-
-> curl -fsSL https://ollama.com/install.sh | sh
-
-2. Download and run any LLM that has capability to invoke tool.
-
-For example, the llama 3.1 has capability to invoke the tool. However, during testing I was not able to invoke tool via llama.3.1 and so for this example I am using gemma3:4b [Again this whole setup is based on LLM Capabilities]
-
-You can run it using following command:
-
-> ollama run gemma3:4b
-
-[Note]: Kindly note the above command will fetch the model with 4b parameters. If you have stronger hardware kindly fetch higher parameter model for better performance.
-
-3. Serve the Ollama on API server using following command
-
-> ollama serve
-
-This will serve the ollama api on port 1134, you can confirm that it running using `curl` command as following:
-
-> curl http://localhost:11434/                                                                                                                                              18:54:00
-`Ollama is running`
-
-4. Download and run Open Web UI: https://github.com/open-webui/open-webui
-
-Kindly visit the github repo of Open Web UI and run it as per your requirement, for quick start, I like to run following command to run it using docker:
-
-> docker run -d --network=host -v open-webui:/app/backend/data -e OLLAMA_BASE_URL=http://127.0.0.1:11434 -e WEBUI_AUTH=False --name open-webui --restart always ghcr.io/open-webui/open-webui:main
-
-After running above command head over to http://localhost:8080/ and you will be able to see Open Web UI screen as shown in Image below:
-
-```
-<div align="center">
-  <a href="https://ollama.com">
-    <img alt="ollama" src="https://github.com/user-attachments/assets/7c520551-e178-41d3-afd2-903b11b68bda">
-  </a>
-</div>
-
-If you don't see the gemma:3.4B as shown in image above, check the troubleshooting guide from Open Web UI: https://docs.openwebui.com/troubleshooting/
-
-You must also observe the hammer icon indicating the availability of the tool.
-
-![image](https://github.com/user-attachments/assets/3aaa9be0-050a-494e-8108-46222f1dbb3f)
-
-If not avaiable, then got `Settings -> Admin Panel -> Settings -> Tools` and verify the URL of the MCP Server.
-
-![image](https://github.com/user-attachments/assets/5c3d1e76-c7e0-412a-94c8-1be320489644)
-
-If everyhting is good, You must also see the traffic logs on MCP Server as well
-
-![image](https://github.com/user-attachments/assets/9cf8da8e-c953-4b7c-954d-6c9607e91ad5)
-
-Now enter the prompt to invoke the MCP tool like following.
-
-![image](https://github.com/user-attachments/assets/c557038d-2ba5-4983-9fb2-f912b1d0c21a)
-
-The Local LLM based on it's capability must have invoked the MCP tool as shown in above image.
-
-If not then again, Open Source LLMs are still catching up with tool inoking capabilities and soon we will have models with Strong tool calling capabilities.
-
-Aletrnative and better approach is to create a custom MCP Client to and use it with MCP Server. 
 
 ## 🛣️ Future Roadmap
 
