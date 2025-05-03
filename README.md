@@ -200,7 +200,7 @@ uv pip install httpx fastmcp
 # The setup for jadx-ai-mcp and jadx_mcp_server is done.
 ```
 
-## Running on Local LLM Using Ollama and Zin MCP Client
+## 2. Running on Local LLM Using Ollama and Zin MCP Client - Recommended
 
 <div align="center">
     <a href="https://github.com/zinja-coder/zin-mcp-client">
@@ -208,7 +208,11 @@ uv pip install httpx fastmcp
     </a>
 </div>
 
-## 🤖 2. Claude Desktop Setup
+⚡ Lightweight, Fast, Simple, CLI-Based MCP Client for STDIO MCP Servers, to fill the gap and provide bridge between your local LLMs running Ollama and MCP Servers.
+
+Check Now: https://github.com/zinja-coder/zin-mcp-client
+
+## 🤖 3. Use Claude Desktop
 
 Make sure Claude Desktop is running with MCP enabled.
 
