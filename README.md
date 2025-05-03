@@ -163,9 +163,19 @@ jadx plugins --install "github:zinja-coder:jadx-ai-mcp"
 ## The above one line code will install the latest version of the plugin directly into the jadx, no need to download the jadx-ai-mcp's .jar file.
 ## 2. Or you can use JADX-GUI to install it by following images as shown below:
 ```
-![img.png](docs/assets/img_1231.png)
-![img_1.png](docs/assets/img_1123.png)
-![img_2.png](docs/assets/img_2122.png)
+
+<div align="center">
+    <img alt="banner" height="480px" widht="620px" src="docs/assets/img_1231.png">
+</div>
+
+<div align="center">
+    <img alt="banner" height="480px" widht="620px" src="docs/assets/img_1123.png">
+</div>
+
+<div align="center">
+    <img alt="banner" height="480px" widht="620px" src="docs/assets/img_2122.png">
+</div>
+
 
 ```bash
 ## 3. GUI method, download the .jar file and follow below steps shown in images
