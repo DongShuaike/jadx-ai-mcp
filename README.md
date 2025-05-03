@@ -362,7 +362,7 @@ Aletrnative and better approach is to create a custom MCP Client to and use it w
 
  - [ ] Add prompts templates, give llm access to Android APK Files as Resources
 
- - [ ] Build MCP Client to support Local LLM
+ - [x] Build MCP Client to support Local LLM
 
  - [ ] **END-GOAL** : Make all android reverse engineering and APK modification tools Connect with single MCP server to make reverse engineering apk files as easy as possible purely from vibes.
 
