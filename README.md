@@ -51,7 +51,7 @@ It is combination of two tools:
 
 ---
 
-# Other projects in Zin MCP Suite
+## Other projects in Zin MCP Suite
  - **[APKTool-MCP-Server](https://github.com/zinja-coder/apktool-mcp-server)**
  - **[JADX-MCP-Server](https://github.com/zinja-coder/jadx-mcp-server)**
  - **[ZIN-MCP-Client](https://github.com/zinja-coder/zin-mcp-client)**
