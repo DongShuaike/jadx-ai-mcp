@@ -1,6 +1,6 @@
 <div align="center">
 
-# JADX-AI-MCP (Part of Zin's Reverse Engineering MCP Suite)
+# JADX-AI-MCP (Part of Zin MCP Suite)
 
 ⚡ Fully automated MCP server + JADX plugin built to communicate with LLM through MCP to analyze Android APKs using LLMs like Claude — uncover vulnerabilities, parse manifests, and reverse engineer effortlessly.
 
@@ -54,6 +54,7 @@ It is combination of two tools:
 # Other projects in Zin MCP Suite
  - **[APKTool-MCP-Server](https://github.com/zinja-coder/apktool-mcp-server)**
  - **[JADX-MCP-Server](https://github.com/zinja-coder/jadx-mcp-server)**
+ - **[ZIN-MCP-Client](https://github.com/zinja-coder/zin-mcp-client)**
 
 ## Current MCP Tools
 
@@ -211,6 +212,10 @@ uv pip install httpx fastmcp
 ⚡ Lightweight, Fast, Simple, CLI-Based MCP Client for STDIO MCP Servers, to fill the gap and provide bridge between your local LLMs running Ollama and MCP Servers.
 
 Check Now: https://github.com/zinja-coder/zin-mcp-client
+
+Demo: **Perform Code Review to Find Vulnerabilities locally**
+
+https://github.com/user-attachments/assets/4cd26715-b5e6-4b4b-95e4-054de6789f42
 
 ## 🤖 3. Use Claude Desktop
 
