@@ -1,13 +1,15 @@
 package jadx.gui.plugins;
 
 import com.google.gson.Gson;
+
 import io.javalin.Javalin;
 import io.javalin.http.Context;
+
 import jadx.api.JavaClass;
 import jadx.api.JavaField;
 import jadx.api.JavaMethod;
 import jadx.api.ResourceFile;
-import jadx.api.ResourceType;
+//import jadx.api.ResourceType;
 import jadx.api.plugins.JadxPlugin;
 import jadx.api.plugins.JadxPluginContext;
 import jadx.api.plugins.JadxPluginInfo;
@@ -40,36 +42,45 @@ public class JadxAIMCP implements JadxPlugin {
     private MainWindow mainWindow;
     private final Gson gson = new Gson();
     private Javalin app;
-    public static final String PLUGIN_ID = "jadx-ai-mcp";
     private static final Logger logger = LoggerFactory.getLogger(JadxAIMCP.class);
+    public static final String PLUGIN_ID = "jadx-ai-mcp";
 
     @Override
     public void init(JadxPluginContext context) {
-        // First check if we're in a GUI context - if not, exit gracefully
+        // first check for GUI context, if not then exit gracefully
         if (context.getGuiContext() == null) {
-            System.out.println("Plugin: Running in non-GUI mode, plugin features disabled.");
+            System.out.println("JADX-AI-MCP Plugin: Running in non-GUI mode, plugin features disabled.");
             return;
         }
 
         try {
-            // Now safe to use GUI context
+            // now safe to use GUI context
             this.mainWindow = (MainWindow) context.getGuiContext().getMainFrame();
             if (this.mainWindow == null) {
-                System.err.println("Plugin: Main window is null. Plugin will not start.");
+                System.err.println("JADX-AI-MCP Plugin: Main windows is null. JADX AI MCP will not start.");
                 return;
             }
 
-            System.out.println("MCP Javalin Plugin: Starting HTTP server...");
+            logger.info("JADX AI MCP Plugin: Starting HTTP Server...");
             this.start(mainWindow);
         } catch (Exception e) {
-            System.err.println("Plugin: Initialization error: " + e.getMessage());
-            // Don't throw exceptions that will crash JADX
+            logger.error("JADX AI MCP Plugin: Initialization error: " + e.getStackTrace());
         }
+    }
+
+    @Override
+    public JadxPluginInfo getPluginInfo() {
+        return JadxPluginInfoBuilder.pluginId(PLUGIN_ID)
+                .name("JADX-AI-MCP Plugin")
+                .description("Integrates MCP Server support for JADX")
+                .homepage("https://github.com/zinja-coder/jadx-ai-mcp")
+                .requiredJadxVersion("1.5.1, r2333")
+                .build();
     }
 
     // public no-argument constructor
     public JadxAIMCP() {
-        // Empty constructor
+        // empty constructor
     }
 
     public void start(MainWindow mainWindow) {
@@ -87,50 +98,44 @@ public class JadxAIMCP implements JadxPlugin {
             app.get("/fields-of-class", this::handleFieldsOfClass);
             app.get("/smali-of-class", this::handleSmaliOfClass);
             app.get("/manifest", this::handleManifest);
-            app.get("/main-application-classes-code", this::handleMainApplication);
+            app.get("/main-application-classes-code", this::handleMainApplicationClassesCode);
+            app.get("/main-application-classes-name", this::handleMainApplicationClassesNames);
             app.get("/main-activity", this::handleMainActivity);
-            app.get("/main-application-classes-names", this::handleMainApplicationClassNames);
 
-            logger.info("JADX MCP plugin HTTP server started at http://127.0.0.1:8650/");
+            logger.info("JADX AI MCP Plugin HTTP Serve Started at http://127.0.0.1:8650/");
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("JADX-AI-MCP Plugin Error: Could not start HTTP Server on. Exception: " + e.getStackTrace());
         }
     }
 
-    @Override
-    public JadxPluginInfo getPluginInfo() {
-        return JadxPluginInfoBuilder.pluginId(PLUGIN_ID)
-                .name("JADX-AI MCP Plugin")
-                .description("Integrates MCP Server support for JADX")
-                .homepage("https://github.com/zinja-coder/jadx-ai-mcp")
-                .requiredJadxVersion("1.5.1, r2333")
-                .build();
-    }
-
-    private void handleCurrentClass(Context ctx) {
+    // -------------------------- various request handlers -------------------------- //
+    
+    // method to handle /current-class request //
+    public void handleCurrentClass(Context ctx){
         try {
             String className = getSelectedTabTitle();
             String code = extractTextFromCurrentTab();
-
+    
             Map<String, Object> result = new HashMap<>();
             result.put("name", className != null ? className.replace(".java", "") : "unknown");
             result.put("type", "code/java");
             result.put("content", code != null ? code : "");
-
+            
             ctx.json(result);
         } catch (Exception e) {
-            e.printStackTrace();
-            ctx.status(500).json(Map.of("error", "Internal error while trying to fetch current class: " + e.getMessage()));
+            logger.error("JADX AI MCP Error: " + e.getStackTrace());
+            ctx.status(500).json(Map.of("error", "Internal Error while trying to fetch current class: " + e.getMessage()));
         }
     }
 
+    // method to handle /all-classes call
     private void handleAllClasses(Context ctx) {
         List<String> classList = new ArrayList<>();
 
         try {
             JadxWrapper wrapper = mainWindow.getWrapper();
-
             List<JavaClass> classes = wrapper.getIncludedClassesWithInners();
+
             for (JavaClass cls : classes) {
                 classList.add(cls.getFullName());
             }
@@ -142,11 +147,12 @@ public class JadxAIMCP implements JadxPlugin {
 
             ctx.json(result);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("JADX AI MCP Error: " + e.getStackTrace());
             ctx.status(500).json(Map.of("error", "Failed to load class list: " + e.getMessage()));
         }
     }
 
+    // method to handle /selected-text call
     private void handleSelectedText(Context ctx) {
         try {
             JTextArea textArea = findTextArea(mainWindow.getTabbedPane().getSelectedComponent());
@@ -156,15 +162,17 @@ public class JadxAIMCP implements JadxPlugin {
             result.put("selectedText", selectedText != null ? selectedText : "");
             ctx.json(result);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("JADX AI MCP Error: " + e.getStackTrace());
             ctx.status(500).json(Map.of("error", "Internal error while trying to fetch selected text: " + e.getMessage()));
         }
     }
 
+    // method to handle /method-by-name call
     private void handleMethodByName(Context ctx) {
         String methodName = ctx.queryParam("method");
 
         if (methodName == null || methodName.isEmpty()) {
+            logger.error("JADX AI MCP Error: Missing 'method' parameter.");
             ctx.status(400).json(Map.of("error", "Missing 'method' parameter"));
             return;
         }
@@ -172,7 +180,8 @@ public class JadxAIMCP implements JadxPlugin {
         try {
             JadxWrapper wrapper = mainWindow.getWrapper();
             if (wrapper == null) {
-                ctx.status(500).json(Map.of("error", "JadxWrapper not initialized"));
+                logger.error("JADX AI MCP Error: JadxWrapper not initialized");
+                ctx.status(500).json(Map.of("error", "JadxWrapper no initialized"));
                 return;
             }
 
@@ -183,14 +192,14 @@ public class JadxAIMCP implements JadxPlugin {
                         try {
                             codeStr = method.getCodeStr();
                         } catch (Exception e) {
-                            codeStr = "Error retrieving code: " + e.getMessage();
+                            logger.error("JADX AI MCP Error: " + e.getStackTrace());
+                            codeStr = "Error retrieving code from method: " + e.getMessage();
                         }
 
                         Map<String, Object> result = new HashMap<>();
                         result.put("class", cls.getFullName());
                         result.put("method", method.getName());
                         result.put("decl", String.valueOf(method.getCodeNodeRef()));
-                        result.put("code", codeStr);
                         ctx.json(result);
                         return;
                     }
@@ -198,16 +207,19 @@ public class JadxAIMCP implements JadxPlugin {
             }
 
             ctx.status(404).json(Map.of("error", "Method not found in any class."));
+            logger.error("JADX AI MCP Error: Method not found in any class");
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("JADX AI MCP Error: " + e.getStackTrace());
             ctx.status(500).json(Map.of("error", "Internal error while trying to retrieve method code: " + e.getMessage()));
         }
     }
 
+    // method to handle /class-source
     private void handleClassSource(Context ctx) {
         String className = ctx.queryParam("class");
 
         if (className == null || className.isEmpty()) {
+            logger.error("JADX AI MCP Error: Missing 'class' parameter.");
             ctx.status(400).json(Map.of("error", "Missing 'class' parameter."));
             return;
         }
@@ -217,25 +229,28 @@ public class JadxAIMCP implements JadxPlugin {
             for (JavaClass cls : wrapper.getIncludedClassesWithInners()) {
                 if (cls.getFullName().equals(className)) {
                     ctx.json(Map.of(
-                            "class", className,
-                            "type", "code/java",
-                            "content", cls.getCode()
-                    ));
+                                    "class", className,
+                                    "type", "code/java",
+                                    "content", cls.getCode()
+                                    ));
                     return;
                 }
             }
             ctx.status(404).json(Map.of("error", "Class not found."));
+            logger.error("JADX AI MCP Error: Class not found.");
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("JADX AI MCP Error: " + e.getStackTrace());
             ctx.status(500).json(Map.of("error", "Internal error retrieving class source: " + e.getMessage()));
         }
     }
 
+    // method to handle /search-method 
     private void handleSearchMethod(Context ctx) {
         String methodName = ctx.queryParam("method");
         List<String> results = new ArrayList<>();
 
         if (methodName == null) {
+            logger.error("JADX AI MCP Error: Missing 'method' parameter.");
             ctx.status(400).json(Map.of("error", "Missing method parameter"));
             return;
         }
@@ -243,67 +258,85 @@ public class JadxAIMCP implements JadxPlugin {
         try {
             JadxWrapper wrapper = mainWindow.getWrapper();
             for (JavaClass cls : wrapper.getIncludedClassesWithInners()) {
-                if (cls.getCode().contains(methodName)) {
+                if (cls.getCode().toLowerCase().contains(methodName.toLowerCase())) {
                     results.add(cls.getFullName());
                 }
             }
             ctx.json(results);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("JADX AI MCP Error: " + e.getStackTrace());
             ctx.status(500).json(Map.of("error", "Internal error during method search: " + e.getMessage()));
         }
     }
 
+    // method to handle /methods-of-class call 
     private void handleMethodsOfClass(Context ctx) {
         String className = ctx.queryParam("class");
+
+        if (className == null || className.isEmpty()) {
+            logger.error("JADX AI MCP Error: Missing 'class' parameter.");
+            ctx.status(400).json(Map.of("error", "Missing required parameter 'class'"));
+        }
 
         try {
             JadxWrapper wrapper = mainWindow.getWrapper();
             for (JavaClass cls : wrapper.getIncludedClassesWithInners()) {
                 if (cls.getFullName().equals(className)) {
                     List<String> methods = new ArrayList<>();
-                    for (JavaMethod m : cls.getMethods()) {
-                        String s = m.getAccessFlags() + " " + m.getReturnType() + " " + m.getName() + m.getMethodNode() + m.getFullName();
-                        methods.add(s);
+                    for (JavaMethod method : cls.getMethods()) {
+                        String methodData = method.getAccessFlags() + " " + method.getReturnType() + " " + 
+                                    method.getName() + method.getMethodNode() + method.getFullName();
+                        methods.add(methodData);
                     }
                     ctx.json(methods);
                     return;
                 }
             }
             ctx.status(404).json(Map.of("error", "Class not found."));
+            logger.error("JADX AI MCP Error: Class not found.");
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("JADX AI MCP Error: " + e.getStackTrace());
             ctx.status(500).json(Map.of("error", "Internal error retrieving methods: " + e.getMessage()));
         }
     }
 
+    // method to handle /fields-of-class call
     private void handleFieldsOfClass(Context ctx) {
         String className = ctx.queryParam("class");
+
+        if (className == null || className.isEmpty()) {
+            logger.error("JADX AI MCP Error: Missing 'class' parameter.");
+            ctx.status(400).json(Map.of("error", "Missing required parameter 'class'"));
+        }
 
         try {
             JadxWrapper wrapper = mainWindow.getWrapper();
             for (JavaClass cls : wrapper.getIncludedClassesWithInners()) {
                 if (cls.getFullName().equals(className)) {
                     List<String> fields = new ArrayList<>();
-                    for (JavaField f : cls.getFields()) {
-                        String s = f.getAccessFlags() + " " + f.getType() + " " + f.getName();
-                        fields.add(s);
+                    for (JavaField field : cls.getFields()) {
+                        String fieldData = field.getAccessFlags() + " "
+                                            + field.getType() + " " + field.getName();
+                        fields.add(fieldData);
                     }
                     ctx.json(fields);
                     return;
                 }
             }
-            ctx.status(404).json(Map.of("error", "Class not found."));
+            ctx.status(404).json(Map.of("error", "Class not found"));
+            logger.error("JADX AI MCP Error: Class not found.");
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("JADX AI MCP Error: " + e.getStackTrace());
             ctx.status(500).json(Map.of("error", "Internal error retrieving fields: " + e.getMessage()));
         }
     }
 
+    // method to handle /smali-of-class call
     private void handleSmaliOfClass(Context ctx) {
         String className = ctx.queryParam("class");
 
         if (className == null || className.isEmpty()) {
+            logger.error("JADX AI MCP Error: Missing 'class' parameter.");
             ctx.status(400).json(Map.of("error", "Missing 'class' parameter."));
             return;
         }
@@ -313,27 +346,30 @@ public class JadxAIMCP implements JadxPlugin {
             for (JavaClass cls : wrapper.getIncludedClassesWithInners()) {
                 if (cls.getFullName().equals(className)) {
                     ctx.json(Map.of(
-                            "class", className,
-                            "type", "code/smali",
-                            "content", cls.getSmali()
+                        "class", className,
+                        "type", "code/smali",
+                        "content", cls.getSmali()
                     ));
                     return;
                 }
             }
             ctx.status(404).json(Map.of("error", "Class not found."));
+            logger.error("JADX AI MCP Error: Class not found.");
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("JADX AI MCP Error: " + e.getStackTrace());
             ctx.status(500).json(Map.of("error", "Internal error retrieving class source: " + e.getMessage()));
         }
     }
 
+    // method to handle /manifest
     private void handleManifest(Context ctx) {
         try {
             JadxWrapper wrapper = mainWindow.getWrapper();
             List<ResourceFile> resources = wrapper.getResources();
-
             ResourceFile manifest = AndroidManifestParser.getAndroidManifest(resources);
+
             if (manifest == null) {
+                logger.error("JADX AI MCP Error: AndroidManifest.xml not found.");
                 ctx.status(404).json(Map.of("error", "AndroidManifest.xml not found."));
                 return;
             }
@@ -348,12 +384,13 @@ public class JadxAIMCP implements JadxPlugin {
 
             ctx.json(result);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("JADX AI MCP Error: " + e.getStackTrace());
             ctx.status(500).json(Map.of("error", "Internal error retrieving AndroidManifest.xml: " + e.getMessage()));
         }
     }
 
-    private void handleMainApplicationClassNames(Context ctx) {
+    // method to handle /main-application-classes-name
+    private void handleMainApplicationClassesNames(Context ctx) {
         try {
             JadxWrapper wrapper = mainWindow.getWrapper();
             List<ResourceFile> resources = wrapper.getResources();
@@ -361,6 +398,7 @@ public class JadxAIMCP implements JadxPlugin {
             // Get the manifest ResourceFile
             ResourceFile manifestRes = AndroidManifestParser.getAndroidManifest(resources);
             if (manifestRes == null) {
+                logger.error("JADX AI MCP Error: AndroidManifest.xml not found.");
                 ctx.status(404).json(Map.of("error", "AndroidManifest.xml not found."));
                 return;
             }
@@ -368,21 +406,24 @@ public class JadxAIMCP implements JadxPlugin {
             // Load manifest content and parse XML
             String manifestXml = manifestRes.loadContent().getText().getCodeStr();
             Document manifestDoc = parseManifestXml(manifestXml, wrapper.getArgs().getSecurity());
-
+            
             // Extract the package name from the <manifest> tag
             Element manifestElement = (Element) manifestDoc.getElementsByTagName("manifest").item(0);
             String packageName = manifestElement.getAttribute("package");
 
             if (packageName.isEmpty()) {
+                logger.error("JADX AI MCP Error: Package name not found in manifest");
                 ctx.status(404).json(Map.of("error", "Package name not found in manifest."));
                 return;
             }
 
             // Filter classes under this package
-            List<JavaClass> matchedClasses = wrapper.getDecompiler().getClasses().stream()
+            List<JavaClass> matchedClasses = wrapper.getDecompiler()
+                    .getClasses()
+                    .stream()
                     .filter(cls -> cls.getFullName().startsWith(packageName))
                     .collect(Collectors.toList());
-
+            
             List<Map<String, Object>> classesInfo = new ArrayList<>();
             for (JavaClass cls : matchedClasses) {
                 Map<String, Object> classInfo = new HashMap<>();
@@ -391,29 +432,32 @@ public class JadxAIMCP implements JadxPlugin {
             }
 
             Map<String, Object> result = new HashMap<>();
-            result.put("allClassesInPackageName", classesInfo);
-
+            result.put("allClassesInPackageName",  classesInfo);
             ctx.json(result);
         } catch (Exception e) {
-            logger.error("Error handling main application", e);
+            logger.error("JADX AI MCP Error: " + e.getStackTrace());
             ctx.status(500).json(Map.of("error", "Internal error retrieving AndroidManifest.xml: " + e.getMessage()));
         }
     }
 
-    private void handleMainApplication(Context ctx) {
+    // handle /main-application-classes-codes 
+    private void handleMainApplicationClassesCode(Context ctx) {
         try {
             JadxWrapper wrapper = mainWindow.getWrapper();
             List<ResourceFile> resources = wrapper.getResources();
 
-            // Get the manifest ResourceFile
+            // get the manifest resource file
             ResourceFile manifestRes = AndroidManifestParser.getAndroidManifest(resources);
             if (manifestRes == null) {
+                logger.error("JADX AI MCP Error: AndroidManifest.xml not found.");
                 ctx.status(404).json(Map.of("error", "AndroidManifest.xml not found."));
                 return;
             }
 
-            // Load manifest content and parse XML
-            String manifestXml = manifestRes.loadContent().getText().getCodeStr();
+            // load manifest content and parse xml
+            String manifestXml = manifestRes.loadContent()
+                .getText()
+                .getCodeStr();
             Document manifestDoc = parseManifestXml(manifestXml, wrapper.getArgs().getSecurity());
 
             // Extract the package name from the <manifest> tag
@@ -421,14 +465,17 @@ public class JadxAIMCP implements JadxPlugin {
             String packageName = manifestElement.getAttribute("package");
 
             if (packageName.isEmpty()) {
-                ctx.status(404).json(Map.of("error", "Package name not found in manifest."));
+                logger.error("JADX AI MCP Error: Package name not found manifest.");
+                ctx.status(404).json(Map.of("error", "Package name not found manifest."));
                 return;
             }
 
-            // Filter classes under this package
-            List<JavaClass> matchedClasses = wrapper.getDecompiler().getClasses().stream()
-                    .filter(cls -> cls.getFullName().startsWith(packageName))
-                    .collect(Collectors.toList());
+            // filter classes under this package
+            List<JavaClass> matchedClasses = wrapper.getDecompiler()
+                .getClasses()
+                .stream()
+                .filter(cls -> cls.getFullName().startsWith(packageName))
+                .collect(Collectors.toList());
 
             List<Map<String, Object>> classesInfo = new ArrayList<>();
             for (JavaClass cls : matchedClasses) {
@@ -441,35 +488,42 @@ public class JadxAIMCP implements JadxPlugin {
 
             Map<String, Object> result = new HashMap<>();
             result.put("allClassesInPackage", classesInfo);
-
             ctx.json(result);
         } catch (Exception e) {
-            logger.error("Error handling main application", e);
+            logger.error("JADX AI MCP Error: " + e.getStackTrace());
             ctx.status(500).json(Map.of("error", "Internal error retrieving AndroidManifest.xml: " + e.getMessage()));
         }
     }
 
-
+    // method to handle /main-activity
     private void handleMainActivity(Context ctx) {
         try {
             JadxWrapper wrapper = mainWindow.getWrapper();
             List<ResourceFile> resources = wrapper.getResources();
 
-            AndroidManifestParser parser = new AndroidManifestParser(AndroidManifestParser.getAndroidManifest(resources), EnumSet.of(AppAttribute.MAIN_ACTIVITY), wrapper.getArgs().getSecurity());
+            AndroidManifestParser parser = new AndroidManifestParser(
+                AndroidManifestParser.getAndroidManifest(resources), 
+                EnumSet.of(AppAttribute.MAIN_ACTIVITY),
+                wrapper.getArgs().getSecurity()
+                );
+            
             if (!parser.isManifestFound()) {
+                logger.error("JADX AI MCP Error: AndroidManifest.xml not found.");
                 ctx.status(404).json(Map.of("error", "AndroidManifest.xml not found."));
                 return;
             }
 
             ApplicationParams results = parser.parse();
             if (results.getMainActivity() == null) {
-                ctx.status(404).json(Map.of("error", "Failed to get main activity from manifest"));
+                logger.error("JADX AI MCP Error: Failed to get main activity from manifest.");
+                ctx.status(404).json(Map.of("error", "Failed to get main activity from manifest."));
                 return;
             }
 
             JavaClass mainActivityClass = results.getMainActivityJavaClass(wrapper.getDecompiler());
 
             if (mainActivityClass == null) {
+                logger.error("JADX AI MCP Error: Failed to get activity class: " + results.getApplication());
                 ctx.status(404).json(Map.of("error", "Failed to get activity class: " + results.getApplication()));
                 return;
             }
@@ -478,16 +532,15 @@ public class JadxAIMCP implements JadxPlugin {
             result.put("name", mainActivityClass.getFullName());
             result.put("type", "code/java");
             result.put("content", mainActivityClass.getCode());
-
+            
             ctx.json(result);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("JADX AI MCP Error: " + e.getStackTrace());
             ctx.status(500).json(Map.of("error", "Internal error retrieving AndroidManifest.xml: " + e.getMessage()));
         }
     }
 
-    // ----------------- Helpers ------------------
-
+    // -------------------------- helper methods to assist the request handler methods -------------------------- //
     private String getSelectedTabTitle() {
         JTabbedPane tabs = mainWindow.getTabbedPane();
         int index = tabs.getSelectedIndex();
@@ -511,7 +564,8 @@ public class JadxAIMCP implements JadxPlugin {
         return null;
     }
 
-    // Reuse JADX's secure XML parsing logic
+    // reusing jadx's secure xml parsing logic for parsing manifest xml file
+    // this code is taken from jadx - https://github.com/skylot/jadx/blob/47647bbb9a9a3cd3150705e09cc1f84a5e9f0be6/jadx-core/src/main/java/jadx/core/utils/android/AndroidManifestParser.java#L214
     private Document parseManifestXml(String xmlContent, IJadxSecurity security) {
         try (InputStream xmlStream = new ByteArrayInputStream(xmlContent.getBytes(StandardCharsets.UTF_8))) {
             Document doc = security.parseXml(xmlStream);
