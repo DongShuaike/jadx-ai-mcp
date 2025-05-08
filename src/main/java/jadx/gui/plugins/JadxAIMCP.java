@@ -9,6 +9,7 @@ import jadx.api.JavaClass;
 import jadx.api.JavaField;
 import jadx.api.JavaMethod;
 import jadx.api.ResourceFile;
+import jadx.api.ResourceType;
 //import jadx.api.ResourceType;
 import jadx.api.plugins.JadxPlugin;
 import jadx.api.plugins.JadxPluginContext;
@@ -30,6 +31,7 @@ import org.slf4j.LoggerFactory;
 import org.w3c.dom.Element;
 
 import com.android.tools.r8.internal.su;
+import com.android.tools.smali.smali.smaliParser.field_reference_return;
 
 import org.w3c.dom.Document;
 
@@ -109,6 +111,7 @@ public class JadxAIMCP implements JadxPlugin {
             app.get("/main-activity", this::handleMainActivity);
             app.get("/strings", this::handleStrings);
             app.get("/list-all-resource-files-names", this::handleListAllResourceFilesNames);
+            app.get("/get-resource-file", this::handleGetResourceFile);
 
             logger.info("JADX AI MCP Plugin HTTP Serve Started at http://127.0.0.1:8650/");
         } catch (Exception e) {
@@ -563,11 +566,11 @@ public class JadxAIMCP implements JadxPlugin {
                         ResContainer container = resFile.loadContent();
                         List<ResContainer> subFiles = container.getSubFiles();
                         for (ResContainer file : subFiles) {
-                            logger.info(file.getFileName());
+                           // logger.info(file.getFileName());
                             if (file.getFileName().equals("res/values/strings.xml")){
                                 Map<String, Object> stringsFile = new HashMap<>();
                                 stringsFile.put("file", file.getFileName());
-                                stringsFile.put("content", file.getText());//container.getText().getCodeStr());
+                                stringsFile.put("content", file.getText().getCodeStr());//container.getText().getCodeStr());
                                 stringResources.add(stringsFile);
                                 break;
                             }
@@ -600,7 +603,7 @@ public class JadxAIMCP implements JadxPlugin {
         }
     }
 
-    // method to handle /strings
+    // method to handle /list-resource-files-names
     private void handleListAllResourceFilesNames(Context ctx) {
         try {
             JadxWrapper wrapper = mainWindow.getWrapper();
@@ -656,6 +659,94 @@ public class JadxAIMCP implements JadxPlugin {
         } catch (Exception e) {
             logger.error("JADX AI MCP Error: " + e.getStackTrace());
             ctx.status(500).json(Map.of("error","Internal error while retrieving strings.xml file: " + e.getMessage()));
+        }
+    }
+
+    // method to handle /get-resource-file
+    private void handleGetResourceFile(Context ctx) {
+        try {
+            JadxWrapper wrapper = mainWindow.getWrapper();
+            List<ResourceFile> resourceFiles = wrapper.getResources();
+            Map<String, Object> resFileContent = new HashMap<>();
+            String filename = ctx.queryParam("name");
+
+            if (filename == null || filename.isEmpty()){
+                ctx.status(400).json(Map.of("error","Missing required 'name' parameter."));
+                return;
+            }
+
+            for (ResourceFile resFile : resourceFiles) {
+
+                if (resFile.getDeobfName().equals(filename)){
+                    
+                    ResContainer container = resFile.loadContent();
+                    //if (container.getDataType() == ResourceType.MEDIA || container.getDataType() == ResourceType.IMG || container.getDataType() == ResourceType.LIB){
+                      //  resFileContent.put("type", "binary");
+                        //resFileContent.put()
+                      //  JadxCodeRef codeRef = container.getDecodedData();
+                    //}/
+                    resFileContent.put("file", resFile.getDeobfName());
+                    resFileContent.put("content", container.getText().getCodeStr());//container.getText().getCodeStr());
+                    //resource.add();
+                    break;
+                } else if (resFile.getDeobfName().equals("resources.arsc")) {
+                    ResContainer container = resFile.loadContent();
+                    List<ResContainer> subFiles = container.getSubFiles();
+                    for (ResContainer file : subFiles) {
+                        //logger.info(file.getFileName());
+                        if (file.getFileName().equals("res/values/strings.xml")){
+                            resFileContent.put("file", file.getFileName());
+                            resFileContent.put("content", file.getText().getCodeStr());
+                            //Map<String, Object> stringsFile = new HashMap<>();
+                           // stringsFile.put("file", file.getFileName());
+                           // stringsFile.put("content", file.getText());//container.getText().getCodeStr());
+                           // stringResources.add(stringsFile);
+                            break;
+                        }
+                    }
+                }
+            }
+                //JadxDecompiler.log
+                //logger.info(resFile.getDeobfName());
+               // if (resFile.getDeobfName().equals("resources.arsc")) {
+                 //   try {
+                   //     ResContainer container = resFile.loadContent();
+                     //   List<ResContainer> subFiles = container.getSubFiles();
+                       // for (ResContainer file : subFiles) {
+                         //   logger.info(file.getFileName());
+                           // if (file.getFileName().equals("res/values/strings.xml")){
+                             //   Map<String, Object> stringsFile = new HashMap<>();
+                               // stringsFile.put("file", file.getFileName());
+         //                       stringsFile.put("content", file.getText());//container.getText().getCodeStr());
+           //                     stringResources.add(stringsFile);
+             //                   break;
+               //             }
+                 //       }
+                        //Map<String, Object> stringsFile = new HashMap<>();
+                        //String str = container.
+                        //stringsFile.put("file", resFile.getDeobfName());
+                        //stringsFile.put("content", container.getText().getCodeStr());
+                        //stringResources.add(stringsFile);
+                        //break;
+                  //  } catch (Exception e) {
+                  //  /    logger.error("JADX AI MCP Error: " + e.getStackTrace());
+                  //  }
+               // }
+            
+
+            if (resFileContent.isEmpty()) {
+                ctx.status(404).json(Map.of("error", "No strings.xml resource found"));
+                return;
+            }
+            
+            Map<String, Object> result = new HashMap<>();
+            result.put("type", "resource/text");
+            result.put("file", resFileContent);
+
+            ctx.json(result);
+        } catch (Exception e) {
+            logger.error("JADX AI MCP Error: " + e.getStackTrace());
+            ctx.status(500).json(Map.of("error","Internal error while retrieving resource file: " + e.getMessage()));
         }
     }
 
