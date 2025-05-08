@@ -108,6 +108,7 @@ public class JadxAIMCP implements JadxPlugin {
             app.get("/main-application-classes-name", this::handleMainApplicationClassesNames);
             app.get("/main-activity", this::handleMainActivity);
             app.get("/strings", this::handleStrings);
+            app.get("/list-all-resource-files-names", this::handleListAllResourceFilesNames);
 
             logger.info("JADX AI MCP Plugin HTTP Serve Started at http://127.0.0.1:8650/");
         } catch (Exception e) {
@@ -591,6 +592,65 @@ public class JadxAIMCP implements JadxPlugin {
             Map<String, Object> result = new HashMap<>();
             result.put("type", "resource/strings-mxl");
             result.put("file", stringResources);
+
+            ctx.json(result);
+        } catch (Exception e) {
+            logger.error("JADX AI MCP Error: " + e.getStackTrace());
+            ctx.status(500).json(Map.of("error","Internal error while retrieving strings.xml file: " + e.getMessage()));
+        }
+    }
+
+    // method to handle /strings
+    private void handleListAllResourceFilesNames(Context ctx) {
+        try {
+            JadxWrapper wrapper = mainWindow.getWrapper();
+            List<ResourceFile> resourceFiles = wrapper.getResources();
+            List<String> resourceFileNames = new ArrayList<>();
+
+            for (ResourceFile resFile : resourceFiles) {
+                try {
+                //JadxDecompiler.log
+                //logger.info(resFile.getDeobfName());
+                if (resFile.getDeobfName().equals("resources.arsc")) {
+                   
+                        ResContainer container = resFile.loadContent();
+                        List<ResContainer> subFiles = container.getSubFiles();
+                        for (ResContainer file : subFiles) {
+                            resourceFileNames.add(file.getFileName());
+                           // logger.info(file.getFileName());
+                            //if (file.getFileName().equals("res/values/strings.xml")){
+                                //Map<String, Object> stringsFile = new HashMap<>();
+                                //stringsFile.put("Name", file.getFileName());
+                                //stringsFile.put("content", file.getText());//container.getText().getCodeStr());
+                                //stringResources.add(stringsFile);
+
+                            //    break;
+                           // }
+                        }
+
+                    
+                        //Map<String, Object> stringsFile = new HashMap<>();
+                        //String str = container.
+                        //stringsFile.put("file", resFile.getDeobfName());
+                        //stringsFile.put("content", container.getText().getCodeStr());
+                        //stringResources.add(stringsFile);
+                        //break;
+                    }
+                    resourceFileNames.add(resFile.getDeobfName());
+                } catch (Exception e) {
+                        logger.error("JADX AI MCP Error: " + e.getStackTrace());
+                    }
+                }
+            
+
+            if (resourceFileNames.isEmpty()) {
+                ctx.status(404).json(Map.of("error", "No resources found"));
+                return;
+            }
+            
+            Map<String, Object> result = new HashMap<>();
+            //result.put("type", "resource/names");
+            result.put("files", resourceFileNames);
 
             ctx.json(result);
         } catch (Exception e) {
