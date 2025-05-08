@@ -1,6 +1,6 @@
 package jadx.gui.plugins;
 
-import com.google.gson.Gson;
+//import com.google.gson.Gson;
 
 import io.javalin.Javalin;
 import io.javalin.http.Context;
@@ -22,11 +22,15 @@ import jadx.core.utils.exceptions.JadxRuntimeException;
 import jadx.core.xmlgen.ResContainer;
 import jadx.gui.JadxWrapper;
 import jadx.gui.ui.MainWindow;
+import jadx.api.JadxDecompiler;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.w3c.dom.Element;
+
+import com.android.tools.r8.internal.su;
+
 import org.w3c.dom.Document;
 
 import javax.swing.*;
@@ -40,9 +44,11 @@ import java.util.stream.Collectors;
 
 public class JadxAIMCP implements JadxPlugin {
     private MainWindow mainWindow;
-    private final Gson gson = new Gson();
+    //private final Gson gson = new Gson();
     private Javalin app;
     private static final Logger logger = LoggerFactory.getLogger(JadxAIMCP.class);
+    private static final Logger logger2 = LoggerFactory.getLogger("Logger");
+    //private static final Logger logger3 = LoggerFactory.getILoggerFactory();
     public static final String PLUGIN_ID = "jadx-ai-mcp";
 
     @Override
@@ -101,6 +107,7 @@ public class JadxAIMCP implements JadxPlugin {
             app.get("/main-application-classes-code", this::handleMainApplicationClassesCode);
             app.get("/main-application-classes-name", this::handleMainApplicationClassesNames);
             app.get("/main-activity", this::handleMainActivity);
+            app.get("/strings", this::handleStrings);
 
             logger.info("JADX AI MCP Plugin HTTP Serve Started at http://127.0.0.1:8650/");
         } catch (Exception e) {
@@ -537,6 +544,58 @@ public class JadxAIMCP implements JadxPlugin {
         } catch (Exception e) {
             logger.error("JADX AI MCP Error: " + e.getStackTrace());
             ctx.status(500).json(Map.of("error", "Internal error retrieving AndroidManifest.xml: " + e.getMessage()));
+        }
+    }
+
+    // method to handle /strings
+    private void handleStrings(Context ctx) {
+        try {
+            JadxWrapper wrapper = mainWindow.getWrapper();
+            List<ResourceFile> resourceFiles = wrapper.getResources();
+            List<Map<String, Object>> stringResources = new ArrayList<>();
+
+            for (ResourceFile resFile : resourceFiles) {
+                //JadxDecompiler.log
+                //logger.info(resFile.getDeobfName());
+                if (resFile.getDeobfName().equals("resources.arsc")) {
+                    try {
+                        ResContainer container = resFile.loadContent();
+                        List<ResContainer> subFiles = container.getSubFiles();
+                        for (ResContainer file : subFiles) {
+                            logger.info(file.getFileName());
+                            if (file.getFileName().equals("res/values/strings.xml")){
+                                Map<String, Object> stringsFile = new HashMap<>();
+                                stringsFile.put("file", file.getFileName());
+                                stringsFile.put("content", file.getText());//container.getText().getCodeStr());
+                                stringResources.add(stringsFile);
+                                break;
+                            }
+                        }
+                        //Map<String, Object> stringsFile = new HashMap<>();
+                        //String str = container.
+                        //stringsFile.put("file", resFile.getDeobfName());
+                        //stringsFile.put("content", container.getText().getCodeStr());
+                        //stringResources.add(stringsFile);
+                        //break;
+                    } catch (Exception e) {
+                        logger.error("JADX AI MCP Error: " + e.getStackTrace());
+                    }
+                }
+            }
+
+            if (stringResources.isEmpty()) {
+                ctx.status(404).json(Map.of("error", "No strings.xml resource found"));
+                return;
+            }
+            
+            Map<String, Object> result = new HashMap<>();
+            result.put("type", "resource/strings-mxl");
+            result.put("file", stringResources);
+
+            ctx.json(result);
+        } catch (Exception e) {
+            logger.error("JADX AI MCP Error: " + e.getStackTrace());
+            ctx.status(500).json(Map.of("error","Internal error while retrieving strings.xml file: " + e.getMessage()));
         }
     }
 

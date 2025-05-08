@@ -34,11 +34,17 @@
             <version>6.6.0</version>
         </dependency>
         <!-- Required for Javalin logging -->
-        <dependency>
+        <!--<dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-simple</artifactId>
             <version>2.0.7</version>
-        </dependency>
+        </dependency>-->
+        <!--<dependency>
+            <groupId>jadx.gui.plugins.mcp.deps.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <version>2.0.16</version>
+        </dependency>-->
+
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
@@ -97,10 +103,10 @@
                                     <pattern>io.javalin</pattern>
                                     <shadedPattern>jadx.gui.plugins.mcp.deps.javalin</shadedPattern>
                                 </relocation>
-                                <relocation>
+                                <!--<relocation>
                                     <pattern>org.slf4j</pattern>
                                     <shadedPattern>jadx.gui.plugins.mcp.deps.slf4j</shadedPattern>
-                                </relocation>
+                                </relocation>-->
                                 <relocation>
                                     <pattern>com.fasterxml.jackson.core</pattern>
                                     <shadedPattern>jadx.gui.plugins.mcp.deps.com.fasterxml.jackson.core</shadedPattern>
