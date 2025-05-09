@@ -107,7 +107,7 @@ public class JadxAIMCP implements JadxPlugin {
             app.get("/smali-of-class", this::handleSmaliOfClass);
             app.get("/manifest", this::handleManifest);
             app.get("/main-application-classes-code", this::handleMainApplicationClassesCode);
-            app.get("/main-application-classes-name", this::handleMainApplicationClassesNames);
+            app.get("/main-application-classes-names", this::handleMainApplicationClassesNames);
             app.get("/main-activity", this::handleMainActivity);
             app.get("/strings", this::handleStrings);
             app.get("/list-all-resource-files-names", this::handleListAllResourceFilesNames);
