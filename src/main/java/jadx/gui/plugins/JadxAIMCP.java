@@ -443,7 +443,7 @@ public class JadxAIMCP implements JadxPlugin {
             }
 
             Map<String, Object> result = new HashMap<>();
-            result.put("allClassesInPackageName",  classesInfo);
+            result.put("classes",  classesInfo);
             ctx.json(result);
         } catch (Exception e) {
             logger.error("JADX AI MCP Error: " + e.getStackTrace());
