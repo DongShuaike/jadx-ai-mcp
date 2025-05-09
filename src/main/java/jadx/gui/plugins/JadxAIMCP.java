@@ -1,7 +1,5 @@
 package jadx.gui.plugins;
 
-//import com.google.gson.Gson;
-
 import io.javalin.Javalin;
 import io.javalin.http.Context;
 
@@ -9,8 +7,6 @@ import jadx.api.JavaClass;
 import jadx.api.JavaField;
 import jadx.api.JavaMethod;
 import jadx.api.ResourceFile;
-import jadx.api.ResourceType;
-//import jadx.api.ResourceType;
 import jadx.api.plugins.JadxPlugin;
 import jadx.api.plugins.JadxPluginContext;
 import jadx.api.plugins.JadxPluginInfo;
@@ -23,16 +19,11 @@ import jadx.core.utils.exceptions.JadxRuntimeException;
 import jadx.core.xmlgen.ResContainer;
 import jadx.gui.JadxWrapper;
 import jadx.gui.ui.MainWindow;
-import jadx.api.JadxDecompiler;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.w3c.dom.Element;
-
-import com.android.tools.r8.internal.su;
-import com.android.tools.smali.smali.smaliParser.field_reference_return;
-
 import org.w3c.dom.Document;
 
 import javax.swing.*;
@@ -46,11 +37,8 @@ import java.util.stream.Collectors;
 
 public class JadxAIMCP implements JadxPlugin {
     private MainWindow mainWindow;
-    //private final Gson gson = new Gson();
     private Javalin app;
     private static final Logger logger = LoggerFactory.getLogger(JadxAIMCP.class);
-    private static final Logger logger2 = LoggerFactory.getLogger("Logger");
-    //private static final Logger logger3 = LoggerFactory.getILoggerFactory();
     public static final String PLUGIN_ID = "jadx-ai-mcp";
 
     @Override
@@ -181,6 +169,7 @@ public class JadxAIMCP implements JadxPlugin {
     // method to handle /method-by-name call
     private void handleMethodByName(Context ctx) {
         String methodName = ctx.queryParam("method");
+        String className = ctx.queryParam("class_name");
 
         if (methodName == null || methodName.isEmpty()) {
             logger.error("JADX AI MCP Error: Missing 'method' parameter.");
@@ -195,6 +184,9 @@ public class JadxAIMCP implements JadxPlugin {
                 ctx.status(500).json(Map.of("error", "JadxWrapper no initialized"));
                 return;
             }
+
+            // if className parameter is not given, return all matching method code
+            if(className == null || className.isEmpty()){
 
             for (JavaClass cls : wrapper.getIncludedClassesWithInners()) {
                 for (jadx.api.JavaMethod method : cls.getMethods()) {
@@ -211,11 +203,35 @@ public class JadxAIMCP implements JadxPlugin {
                         result.put("class", cls.getFullName());
                         result.put("method", method.getName());
                         result.put("decl", String.valueOf(method.getCodeNodeRef()));
+                        result.put("code", codeStr);
                         ctx.json(result);
                         return;
                     }
                 }
             }
+        } else { // if className parameter is given then return only that class' method
+            for (JavaClass cls : wrapper.getIncludedClassesWithInners()) {
+                for (jadx.api.JavaMethod method : cls.getMethods()) {
+                    if (method.getName().equalsIgnoreCase(methodName)) {
+                        String codeStr;
+                        try {
+                            codeStr = method.getCodeStr();
+                        } catch (Exception e) {
+                            logger.error("JADX AI MCP Error: " + e.getStackTrace());
+                            codeStr = "Error retrieving code from method: " + e.getMessage();
+                        }
+
+                        Map<String, Object> result = new HashMap<>();
+                        result.put("class", cls.getFullName());
+                        result.put("method", method.getName());
+                        result.put("decl", String.valueOf(method.getCodeNodeRef()));
+                        result.put("code", codeStr);
+                        ctx.json(result);
+                        return;
+                    }
+                }
+            }
+        }
 
             ctx.status(404).json(Map.of("error", "Method not found in any class."));
             logger.error("JADX AI MCP Error: Method not found in any class");
