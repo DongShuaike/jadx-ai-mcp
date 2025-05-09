@@ -287,6 +287,7 @@ public class JadxAIMCP implements JadxPlugin {
         if (className == null || className.isEmpty()) {
             logger.error("JADX AI MCP Error: Missing 'class' parameter.");
             ctx.status(400).json(Map.of("error", "Missing required parameter 'class'"));
+            return;
         }
 
         try {
@@ -318,6 +319,7 @@ public class JadxAIMCP implements JadxPlugin {
         if (className == null || className.isEmpty()) {
             logger.error("JADX AI MCP Error: Missing 'class' parameter.");
             ctx.status(400).json(Map.of("error", "Missing required parameter 'class'"));
+            return;
         }
 
         try {
