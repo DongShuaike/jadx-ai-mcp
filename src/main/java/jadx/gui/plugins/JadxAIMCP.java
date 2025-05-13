@@ -1,3 +1,8 @@
+/* 
+ *Copyright (c) 2025 Jadx AI MCP developer(s) (https://github.com/zinja-coder/jadx-ai-mcp)
+ *See the file 'LICENSE' for copying permission
+*/
+
 package jadx.gui.plugins;
 
 import io.javalin.Javalin;
@@ -45,7 +50,7 @@ public class JadxAIMCP implements JadxPlugin {
     public void init(JadxPluginContext context) {
         // first check for GUI context, if not then exit gracefully
         if (context.getGuiContext() == null) {
-            System.out.println("JADX-AI-MCP Plugin: Running in non-GUI mode, plugin features disabled.");
+            logger.error("JADX-AI-MCP Plugin: Running in non-GUI mode, plugin features disabled.");
             return;
         }
 
@@ -53,7 +58,7 @@ public class JadxAIMCP implements JadxPlugin {
             // now safe to use GUI context
             this.mainWindow = (MainWindow) context.getGuiContext().getMainFrame();
             if (this.mainWindow == null) {
-                System.err.println("JADX-AI-MCP Plugin: Main windows is null. JADX AI MCP will not start.");
+                logger.error("JADX-AI-MCP Plugin: Main windows is null. JADX AI MCP will not start.");
                 return;
             }
 
