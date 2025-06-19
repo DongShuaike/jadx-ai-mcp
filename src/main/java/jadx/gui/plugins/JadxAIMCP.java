@@ -300,7 +300,7 @@ public class JadxAIMCP implements JadxPlugin {
                     results.add(cls.getFullName());
                 }
             }
-            ctx.json(results);
+            ctx.result(String.join("\n", results));
         } catch (Exception e) {
             logger.error("JADX AI MCP Error: " + e.getStackTrace());
             ctx.status(500).json(Map.of("error", "Internal error during method search: " + e.getMessage()));
