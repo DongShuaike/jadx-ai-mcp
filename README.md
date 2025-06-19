@@ -271,6 +271,21 @@ repository
 
 Then, navigate code and interact via real-time code review prompts using the built-in integration.
 
+## 4. Use Cherry Studio
+
+If you want to configure the MCP tool in Cherry Studio, you can refer to the following configuration.
+- Type: stdio
+- command: uv
+- argument:
+```bash
+--directory
+path/to/jadx-mcp-server
+run
+jadx_mcp_server.py
+```
+- `path/to/jadx-mcp-server` with the absolute path to where you cloned this
+repository
+
 ## Give it a shot
 
 1. Run jadx-gui and load any .apk file
