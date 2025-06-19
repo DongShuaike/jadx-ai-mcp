@@ -327,7 +327,7 @@ public class JadxAIMCP implements JadxPlugin {
                                 method.getName() + method.getMethodNode() + method.getFullName();
                         methods.add(methodData);
                     }
-                    ctx.json(methods);
+                    ctx.result(String.join("\n", methods));
                     return;
                 }
             }
@@ -359,7 +359,7 @@ public class JadxAIMCP implements JadxPlugin {
                                 + field.getType() + " " + field.getName();
                         fields.add(fieldData);
                     }
-                    ctx.json(fields);
+                    ctx.result(String.join("\n", fields));
                     return;
                 }
             }
