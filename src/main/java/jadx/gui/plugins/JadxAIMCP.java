@@ -267,10 +267,7 @@ public class JadxAIMCP implements JadxPlugin {
             JadxWrapper wrapper = mainWindow.getWrapper();
             for (JavaClass cls : wrapper.getIncludedClassesWithInners()) {
                 if (cls.getFullName().equals(className)) {
-                    ctx.json(Map.of(
-                            "class", className,
-                            "type", "code/java",
-                            "content", cls.getCode()));
+                    ctx.result(cls.getCode());
                     return;
                 }
             }
