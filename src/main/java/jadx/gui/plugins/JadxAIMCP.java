@@ -178,7 +178,7 @@ public class JadxAIMCP implements JadxPlugin {
     // method to handle /method-by-name call
     private void handleMethodByName(Context ctx) {
         String methodName = ctx.queryParam("method");
-        String className = ctx.queryParam("class_name");
+        String className = ctx.queryParam("class");
 
         if (methodName == null || methodName.isEmpty()) {
             logger.error("JADX AI MCP Error: Missing 'method' parameter.");
