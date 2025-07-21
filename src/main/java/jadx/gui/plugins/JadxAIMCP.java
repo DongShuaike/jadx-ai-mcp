@@ -12,10 +12,12 @@ import jadx.api.JavaClass;
 import jadx.api.JavaField;
 import jadx.api.JavaMethod;
 import jadx.api.ResourceFile;
+import jadx.api.metadata.ICodeNodeRef;
 import jadx.api.plugins.JadxPlugin;
 import jadx.api.plugins.JadxPluginContext;
 import jadx.api.plugins.JadxPluginInfo;
 import jadx.api.plugins.JadxPluginInfoBuilder;
+import jadx.api.plugins.events.types.NodeRenamedByUser;
 import jadx.api.security.IJadxSecurity;
 import jadx.core.utils.android.AndroidManifestParser;
 import jadx.core.utils.android.AppAttribute;
@@ -105,6 +107,10 @@ public class JadxAIMCP implements JadxPlugin {
             app.get("/strings", this::handleStrings);
             app.get("/list-all-resource-files-names", this::handleListAllResourceFilesNames);
             app.get("/get-resource-file", this::handleGetResourceFile);
+            app.get("/rename-class", this::handleRenameClass);
+            app.get("/rename-method", this::handleRenameMethod);
+            app.get("/rename-field", this::handleRenameField);
+
 
             logger.info("// -------------------- JADX AI MCP PLUGIN -------------------- //\n - By Jafar Pathan (https://github.com/zinja-coder)\n - To Report Issues : https://github.com/zinja-coder/jadx-ai-mcp\n\n");
             logger.info("JADX AI MCP Plugin HTTP Serve Started at http://127.0.0.1:8650/");
@@ -185,6 +191,7 @@ public class JadxAIMCP implements JadxPlugin {
             ctx.status(400).json(Map.of("error", "Missing 'method' parameter"));
             return;
         }
+        className = className.replace('$','.');
 
         try {
             JadxWrapper wrapper = mainWindow.getWrapper();
@@ -220,7 +227,7 @@ public class JadxAIMCP implements JadxPlugin {
                 }
             } else { // if className parameter is given then return only that class' method
                 for (JavaClass cls : wrapper.getIncludedClassesWithInners()) {
-                    if (cls.getName().equals(className)) {
+                    if (cls.getFullName().equals(className)) {
                         for (jadx.api.JavaMethod method : cls.getMethods()) {
                             if (method.getName().equalsIgnoreCase(methodName)) {
                                 String codeStr;
@@ -262,6 +269,7 @@ public class JadxAIMCP implements JadxPlugin {
             ctx.status(400).json(Map.of("error", "Missing 'class' parameter."));
             return;
         }
+        className = className.replace('$','.');
 
         try {
             JadxWrapper wrapper = mainWindow.getWrapper();
@@ -313,6 +321,7 @@ public class JadxAIMCP implements JadxPlugin {
             ctx.status(400).json(Map.of("error", "Missing required parameter 'class'"));
             return;
         }
+        className = className.replace('$','.');
 
         try {
             JadxWrapper wrapper = mainWindow.getWrapper();
@@ -345,6 +354,7 @@ public class JadxAIMCP implements JadxPlugin {
             ctx.status(400).json(Map.of("error", "Missing required parameter 'class'"));
             return;
         }
+        className = className.replace('$','.');
 
         try {
             JadxWrapper wrapper = mainWindow.getWrapper();
@@ -368,6 +378,126 @@ public class JadxAIMCP implements JadxPlugin {
         }
     }
 
+    // method to handle /rename-class
+    private void handleRenameClass(Context ctx) {
+        String className = ctx.queryParam("class");
+        String newName = ctx.queryParam("newName");
+
+        if (className == null || className.isEmpty() || newName == null || newName.isEmpty()) {
+            logger.error("JADX AI MCP Error: Missing 'class' or 'newName' parameter.");
+            ctx.status(400).json(Map.of("error", "Missing required parameter 'class' or 'newName'"));
+            return;
+        }
+        className = className.replace('$','.');
+
+        try {
+            JadxWrapper wrapper = mainWindow.getWrapper();
+            for (JavaClass cls : wrapper.getIncludedClassesWithInners()) {
+                if (cls.getFullName().equals(className)) {
+                    ICodeNodeRef nodeRef = cls.getCodeNodeRef();
+                    NodeRenamedByUser event = new NodeRenamedByUser(nodeRef, cls.getName(), newName);
+                    event.setRenameNode(cls.getClassNode());
+                    event.setResetName(newName.isEmpty());
+                    mainWindow.events().send(event);
+                    logger.info("rename Class " + cls.getName() + " to " + newName);
+                    Map<String, Object> result = new HashMap<>();
+                    result.put("result", "rename Class " + cls.getName() + " to " + newName);
+                    ctx.status(200);
+                    return;
+                }
+            }
+            ctx.status(404).json(Map.of("error", "Class not found"));
+            logger.error("JADX AI MCP Error: Class not found.");
+        } catch (Exception e) {
+            logger.error("JADX AI MCP Error: " + e.getStackTrace());
+            ctx.status(500).json(Map.of("error", "Internal error rename Class: " + e.getMessage()));
+        }
+    }
+
+    // method to handle /rename-method
+    private void handleRenameMethod(Context ctx) {
+        String methodName = ctx.queryParam("method");
+        String newName = ctx.queryParam("newName");
+
+        if (methodName == null || methodName.isEmpty()) {
+            logger.error("JADX AI MCP Error: Missing 'method' parameter.");
+            ctx.status(400).json(Map.of("error", "Missing 'method' parameter"));
+            return;
+        }
+
+        try {
+            JadxWrapper wrapper = mainWindow.getWrapper();
+            if (wrapper == null) {
+                logger.error("JADX AI MCP Error: JadxWrapper not initialized");
+                ctx.status(500).json(Map.of("error", "JadxWrapper no initialized"));
+                return;
+            }
+            for(JavaClass cls:wrapper.getIncludedClassesWithInners()){
+                for(JavaMethod method : cls.getMethods()){
+                    if(method.getFullName().equalsIgnoreCase(methodName)){
+                        ICodeNodeRef nodeRef = method.getCodeNodeRef();
+                        NodeRenamedByUser event = new NodeRenamedByUser(nodeRef, method.getName(), newName);
+                        event.setRenameNode(method.getMethodNode());
+                        event.setResetName(newName.isEmpty());
+                        mainWindow.events().send(event);
+                        logger.info("rename method " + method.getName() + " to " + newName);
+                        Map<String, Object> result = new HashMap<>();
+                        result.put("result", "rename method " + method.getName() + " to " + newName);
+                        ctx.status(200);
+                        return;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            logger.error("JADX AI MCP Error: " + e.getStackTrace());
+            ctx.status(500)
+                    .json(Map.of("error", "Internal error while trying to retrieve method code: " + e.getMessage()));
+        }
+    }
+
+    // method to handle /rename-field
+    private void handleRenameField(Context ctx) {
+        String className = ctx.queryParam("class");
+        String oldFieldName = ctx.queryParam("field");
+        String newFieldName = ctx.queryParam("newFieldName");
+
+        if (className == null || className.isEmpty() || oldFieldName == null || oldFieldName.isEmpty()) {
+            logger.error("JADX AI MCP Error: Missing 'class' or 'field' parameter.");
+            ctx.status(400).json(Map.of("error", "Missing required parameter 'class' or 'field'"));
+            return;
+        }
+        className = className.replace('$','.');
+
+        try {
+            JadxWrapper wrapper = mainWindow.getWrapper();
+            for (JavaClass cls : wrapper.getIncludedClassesWithInners()) {
+                if (cls.getFullName().equals(className)) {
+                    for (JavaField field : cls.getFields()) {
+                        if (field.getName().equals(oldFieldName)) {
+                            logger.info("Renaming field: " + field.getName() + " to " + newFieldName);
+                            ICodeNodeRef nodeRef = field.getCodeNodeRef();
+                            NodeRenamedByUser event = new NodeRenamedByUser(nodeRef, field.getName(), newFieldName);
+                            event.setRenameNode(field.getFieldNode());
+                            event.setResetName(newFieldName.isEmpty());
+                            mainWindow.events().send(event);
+                            Map<String, Object> result = new HashMap<>();
+                            result.put("result", "rename method " + field.getName() + " to " + newFieldName);
+                            ctx.status(200);
+                            return;
+
+
+                        }
+                    }
+                }
+            }
+            ctx.status(404).json(Map.of("error", "Class not found"));
+            logger.error("JADX AI MCP Error: Class not found.");
+        } catch (Exception e) {
+            logger.error("JADX AI MCP Error: " + e.getStackTrace());
+            ctx.status(500).json(Map.of("error", "Internal error rename field: " + e.getMessage()));
+        }
+    }
+
     // method to handle /smali-of-class call
     private void handleSmaliOfClass(Context ctx) {
         String className = ctx.queryParam("class");
@@ -377,6 +507,7 @@ public class JadxAIMCP implements JadxPlugin {
             ctx.status(400).json(Map.of("error", "Missing 'class' parameter."));
             return;
         }
+        className = className.replace('$','.');
 
         try {
             JadxWrapper wrapper = mainWindow.getWrapper();
@@ -615,6 +746,7 @@ public class JadxAIMCP implements JadxPlugin {
                     .json(Map.of("error", "Internal error while retrieving strings.xml file: " + e.getMessage()));
         }
     }
+
 
     // method to handle /list-resource-files-names
     private void handleListAllResourceFilesNames(Context ctx) {
