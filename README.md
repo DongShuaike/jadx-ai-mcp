@@ -85,7 +85,10 @@ The following MCP tools are available:
 - `get_android_manifest()` — Retrieve and return the AndroidManifest.xml content.
 - `get_strings()` : Fetches the strings.xml file
 - `get_all_resource_file_names()` : Retrieve all resource files names that exists in application
-- `get_resource_file()` : Retrieve resource file content 
+- `get_resource_file()` : Retrieve resource file content
+- `rename_class()` : Renames the class name
+- `rename_method()` : Renames the method
+- `rename_field()` : Renames the field
   
 ---
 
