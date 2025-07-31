@@ -5,7 +5,7 @@
 
     <groupId>jadx.gui.plugins</groupId>
     <artifactId>jadx-ai-mcp</artifactId>
-    <version>2.2.12</version>
+    <version>3.0.0</version>
 
     <properties>
         <maven.compiler.source>11</maven.compiler.source>
