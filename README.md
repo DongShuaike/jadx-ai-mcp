@@ -47,6 +47,10 @@ https://github.com/user-attachments/assets/c184afae-3713-4bc0-a1d0-546c1f4eb57f
 
 https://github.com/user-attachments/assets/6342ea0f-fa8f-44e6-9b3a-4ceb8919a5b0
 
+- **Run with your favorite LLM Client**
+
+https://github.com/user-attachments/assets/b4a6b280-5aa9-4e76-ac72-a0abec73b809
+
 - **Analyze The APK Resources**
 
 https://github.com/user-attachments/assets/f42d8072-0e3e-4f03-93ea-121af4e66eb1
@@ -288,6 +292,12 @@ jadx_mcp_server.py
 ```
 - `path/to/jadx-mcp-server` with the absolute path to where you cloned this
 repository
+
+## 5. Using LMStudio
+
+You can also use JADX AI MCP Server with LM Studio by configuring it's mcp.json file. Here's the video guide.
+
+https://github.com/user-attachments/assets/b4a6b280-5aa9-4e76-ac72-a0abec73b809
 
 ## Give it a shot
 
