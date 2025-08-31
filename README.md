@@ -299,6 +299,18 @@ You can also use JADX AI MCP Server with LM Studio by configuring it's mcp.json 
 
 https://github.com/user-attachments/assets/b4a6b280-5aa9-4e76-ac72-a0abec73b809
 
+## 6. Running in HTTP Stream Mode
+
+You can also use Jadx in HTTP Stream Mode using `--http` option with `jadx_mcp_server.py` as shown in following:
+
+```bash
+uv run jadx_mcp_server.py --http
+
+OR
+
+uv run jadx_mcp_server.py --http --port 9999
+```
+
 ## Give it a shot
 
 1. Run jadx-gui and load any .apk file
