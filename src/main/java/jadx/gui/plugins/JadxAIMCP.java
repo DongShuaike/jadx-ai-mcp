@@ -40,6 +40,9 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class JadxAIMCP implements JadxPlugin {
@@ -47,12 +50,16 @@ public class JadxAIMCP implements JadxPlugin {
     private Javalin app;
     private static final Logger logger = LoggerFactory.getLogger(JadxAIMCP.class);
     public static final String PLUGIN_ID = "jadx-ai-mcp";
+    private ScheduledExecutorService scheduler;
+    private volatile boolean serverStarted = false;
+    private static final int MAX_STARTUP_ATTEMPTS = 30; // 30 seconds max wait
+    private static final int CHECK_INTERVAL_SECONDS = 1;
 
     @Override
     public void init(JadxPluginContext context) {
         // first check for GUI context, if not then exit gracefully
         if (context.getGuiContext() == null) {
-            logger.error("JADX-AI-MCP Plugin: Running in non-GUI mode, plugin features disabled.");
+            logger.info("JADX-AI-MCP Plugin: Running in non-GUI mode, plugin features disabled.");
             return;
         }
 
@@ -60,14 +67,24 @@ public class JadxAIMCP implements JadxPlugin {
             // now safe to use GUI context
             this.mainWindow = (MainWindow) context.getGuiContext().getMainFrame();
             if (this.mainWindow == null) {
-                logger.error("JADX-AI-MCP Plugin: Main windows is null. JADX AI MCP will not start.");
+                logger.error("JADX-AI-MCP Plugin: Main window is null. JADX AI MCP will not start.");
                 return;
             }
 
-            logger.info("JADX AI MCP Plugin: Starting HTTP Server...");
-            this.start(mainWindow);
+            logger.info("JADX-AI-MCP Plugin: Initializing and waiting for JADX to fully load...");
+            
+            // Initialize scheduler for delayed startup
+            scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r, "JADX-AI-MCP-Startup");
+                t.setDaemon(true);
+                return t;
+            });
+            
+            // Start the delayed initialization process
+            startDelayedInitialization();
+            
         } catch (Exception e) {
-            logger.error("JADX AI MCP Plugin: Initialization error: " + e.getStackTrace());
+            logger.error("JADX-AI-MCP Plugin: Initialization error: " + e.getMessage(), e);
         }
     }
 
@@ -86,7 +103,106 @@ public class JadxAIMCP implements JadxPlugin {
         // empty constructor
     }
 
-    public void start(MainWindow mainWindow) {
+    /**
+     * Starts delayed initialization process that waits for JADX to fully load
+     */
+    private void startDelayedInitialization() {
+        scheduler.scheduleAtFixedRate(() -> {
+            try {
+                if (serverStarted) {
+                    scheduler.shutdown();
+                    return;
+                }
+                
+                if (isJadxFullyLoaded()) {
+                    logger.info("JADX-AI-MCP Plugin: JADX fully loaded, starting HTTP server...");
+                    start();
+                    serverStarted = true;
+                    scheduler.shutdown();
+                } else {
+                    logger.debug("JADX-AI-MCP Plugin: Waiting for JADX to fully load...");
+                }
+            } catch (Exception e) {
+                logger.error("JADX-AI-MCP Plugin: Error during delayed initialization: " + e.getMessage(), e);
+            }
+        }, 2, CHECK_INTERVAL_SECONDS, TimeUnit.SECONDS); // Start after 2 seconds, then check every 1 second
+        
+        // Schedule timeout to prevent indefinite waiting
+        scheduler.schedule(() -> {
+            if (!serverStarted) {
+                logger.warn("JADX-AI-MCP Plugin: Timeout waiting for JADX to load. Starting server anyway...");
+                try {
+                    start();
+                    serverStarted = true;
+                } catch (Exception e) {
+                    logger.error("JADX-AI-MCP Plugin: Failed to start server after timeout: " + e.getMessage(), e);
+                }
+            }
+        }, MAX_STARTUP_ATTEMPTS, TimeUnit.SECONDS);
+    }
+
+    /**
+     * Checks if JADX has fully loaded and has valid data to work with
+     */
+    private boolean isJadxFullyLoaded() {
+        try {
+            if (mainWindow == null) {
+                return false;
+            }
+            
+            JadxWrapper wrapper = mainWindow.getWrapper();
+            if (wrapper == null) {
+                logger.debug("JADX-AI-MCP Plugin: JadxWrapper is null, not ready yet");
+                return false;
+            }
+            
+            // Check if wrapper is properly initialized and has classes
+            List<JavaClass> classes = wrapper.getIncludedClassesWithInners();
+            if (classes == null) {
+                logger.debug("JADX-AI-MCP Plugin: Classes list is null, not ready yet");
+                return false;
+            }
+            
+            // Check if we have at least some content (even if it's just an empty APK)
+            // This ensures the decompiler has finished its initial processing
+            boolean hasDecompilerData = wrapper.getDecompiler() != null;
+            
+            if (!hasDecompilerData) {
+                logger.debug("JADX-AI-MCP Plugin: Decompiler not ready yet");
+                return false;
+            }
+            
+            logger.debug("JADX-AI-MCP Plugin: Found {} classes, JADX appears to be loaded", classes.size());
+            return true;
+            
+        } catch (Exception e) {
+            logger.debug("JADX-AI-MCP Plugin: Exception during readiness check: " + e.getMessage());
+            return false;
+        }
+    }
+
+        /**
+     * Cleanup method to properly shutdown the server and scheduler
+     */
+    public void shutdown() {
+        try {
+            if (scheduler != null && !scheduler.isShutdown()) {
+                scheduler.shutdown();
+                if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
+                    scheduler.shutdownNow();
+                }
+            }
+            
+            if (app != null) {
+                app.stop();
+                logger.info("JADX-AI-MCP Plugin: HTTP Server stopped");
+            }
+        } catch (Exception e) {
+            logger.error("JADX-AI-MCP Plugin: Error during shutdown: " + e.getMessage(), e);
+        }
+    }
+
+    public void start() {
         try {
             app = Javalin.create().start(8650);
 
