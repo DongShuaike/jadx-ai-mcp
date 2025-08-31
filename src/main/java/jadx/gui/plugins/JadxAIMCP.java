@@ -103,9 +103,7 @@ public class JadxAIMCP implements JadxPlugin {
         // empty constructor
     }
 
-    /**
-     * Starts delayed initialization process that waits for JADX to fully load
-     */
+    // Starts delayed initialization process that waits for JADX to fully load
     private void startDelayedInitialization() {
         scheduler.scheduleAtFixedRate(() -> {
             try {
@@ -141,9 +139,7 @@ public class JadxAIMCP implements JadxPlugin {
         }, MAX_STARTUP_ATTEMPTS, TimeUnit.SECONDS);
     }
 
-    /**
-     * Checks if JADX has fully loaded and has valid data to work with
-     */
+    // Checks if JADX has fully loaded and has valid data to work with
     private boolean isJadxFullyLoaded() {
         try {
             if (mainWindow == null) {
@@ -181,9 +177,7 @@ public class JadxAIMCP implements JadxPlugin {
         }
     }
 
-        /**
-     * Cleanup method to properly shutdown the server and scheduler
-     */
+    // Cleanup method to properly shutdown the server and scheduler
     public void shutdown() {
         try {
             if (scheduler != null && !scheduler.isShutdown()) {
@@ -235,8 +229,7 @@ public class JadxAIMCP implements JadxPlugin {
         }
     }
 
-    // -------------------------- various request handlers
-    // -------------------------- //
+    // -------------------------- various request handlers -------------------------- //
 
     // method to handle /current-class request //
     public void handleCurrentClass(Context ctx) {
