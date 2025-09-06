@@ -36,6 +36,8 @@ import org.w3c.dom.Document;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -77,18 +79,25 @@ public class JadxAIMCP implements JadxPlugin {
                 return;
             }
 
+            // Initializing Preferences
+            prefs = Preferences.userNodeForPackage(JadxAIMCP.class);
+            currentPort = prefs.getInt(PREF_KEY_PORT, DEFAULT_PORT);
+
+            // Add menu items for port options
+            addMenuItems();
+
             logger.info("JADX-AI-MCP Plugin: Initializing and waiting for JADX to fully load...");
-            
+
             // Initialize scheduler for delayed startup
             scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
                 Thread t = new Thread(r, "JADX-AI-MCP-Startup");
                 t.setDaemon(true);
                 return t;
             });
-            
+
             // Start the delayed initialization process
             startDelayedInitialization();
-            
+
         } catch (Exception e) {
             logger.error("JADX-AI-MCP Plugin: Initialization error: " + e.getMessage(), e);
         }
@@ -117,7 +126,7 @@ public class JadxAIMCP implements JadxPlugin {
                     scheduler.shutdown();
                     return;
                 }
-                
+
                 if (isJadxFullyLoaded()) {
                     logger.info("JADX-AI-MCP Plugin: JADX fully loaded, starting HTTP server...");
                     start();
@@ -130,7 +139,7 @@ public class JadxAIMCP implements JadxPlugin {
                 logger.error("JADX-AI-MCP Plugin: Error during delayed initialization: " + e.getMessage(), e);
             }
         }, 2, CHECK_INTERVAL_SECONDS, TimeUnit.SECONDS); // Start after 2 seconds, then check every 1 second
-        
+
         // Schedule timeout to prevent indefinite waiting
         scheduler.schedule(() -> {
             if (!serverStarted) {
@@ -151,32 +160,32 @@ public class JadxAIMCP implements JadxPlugin {
             if (mainWindow == null) {
                 return false;
             }
-            
+
             JadxWrapper wrapper = mainWindow.getWrapper();
             if (wrapper == null) {
                 logger.debug("JADX-AI-MCP Plugin: JadxWrapper is null, not ready yet");
                 return false;
             }
-            
+
             // Check if wrapper is properly initialized and has classes
             List<JavaClass> classes = wrapper.getIncludedClassesWithInners();
             if (classes == null) {
                 logger.debug("JADX-AI-MCP Plugin: Classes list is null, not ready yet");
                 return false;
             }
-            
+
             // Check if we have at least some content (even if it's just an empty APK)
             // This ensures the decompiler has finished its initial processing
             boolean hasDecompilerData = wrapper.getDecompiler() != null;
-            
+
             if (!hasDecompilerData) {
                 logger.debug("JADX-AI-MCP Plugin: Decompiler not ready yet");
                 return false;
             }
-            
+
             logger.debug("JADX-AI-MCP Plugin: Found {} classes, JADX appears to be loaded", classes.size());
             return true;
-            
+
         } catch (Exception e) {
             logger.debug("JADX-AI-MCP Plugin: Exception during readiness check: " + e.getMessage());
             return false;
@@ -192,7 +201,7 @@ public class JadxAIMCP implements JadxPlugin {
                     scheduler.shutdownNow();
                 }
             }
-            
+
             if (app != null) {
                 app.stop();
                 logger.info("JADX-AI-MCP Plugin: HTTP Server stopped");
@@ -204,7 +213,7 @@ public class JadxAIMCP implements JadxPlugin {
 
     public void start() {
         try {
-            app = Javalin.create().start(8650);
+            app = Javalin.create().start(currentPort);
 
             // Setup routes
             app.get("/current-class", this::handleCurrentClass);
@@ -227,12 +236,267 @@ public class JadxAIMCP implements JadxPlugin {
             app.get("/rename-method", this::handleRenameMethod);
             app.get("/rename-field", this::handleRenameField);
 
-
-            logger.info("// -------------------- JADX AI MCP PLUGIN -------------------- //\n - By Jafar Pathan (https://github.com/zinja-coder)\n - To Report Issues : https://github.com/zinja-coder/jadx-ai-mcp\n\n");
+            logger.info(
+                    "// -------------------- JADX AI MCP PLUGIN -------------------- //\n - By Jafar Pathan (https://github.com/zinja-coder)\n - To Report Issues : https://github.com/zinja-coder/jadx-ai-mcp\n\n");
             logger.info("JADX AI MCP Plugin HTTP Serve Started at http://127.0.0.1:8650/");
         } catch (Exception e) {
-            logger.error("JADX-AI-MCP Plugin Error: Could not start HTTP Server on. Exception: " + e.getMessage().toString());
+            logger.error("JADX-AI-MCP Plugin Error: Could not start HTTP Server on. Exception: "
+                    + e.getMessage().toString());
         }
+    }
+
+    // Add menu items to JADX's menu bar
+    private void addMenuItems() {
+        SwingUtilities.invokeLater(() -> {
+            try {
+                JMenuBar menuBar = mainWindow.getJMenuBar();
+                if (menuBar == null) {
+                    logger.warn("JADX-AI-MCP Plugin: Menu bar not found, cannot add menu items");
+                    return;
+                }
+
+                // Look for existing Plugins menu or create one
+                JMenu pluginsMenu = findOrCreatePluginsMenu(menuBar);
+
+                // Add Jadx AI MCP submenu
+                JMenu jadxAIMcpMenu = new JMenu("JADX AI MCP Server");
+
+                // Configure Port menu item
+                JMenuItem configurePortItem = new JMenuItem("Configure Port...");
+                configurePortItem.addActionListener(new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        showPortConfigDialog();
+                    }
+                });
+
+                // Restart Server menu item
+                JMenuItem restartServerItem = new JMenuItem("Restart Server");
+                restartServerItem.addActionListener(new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        restartServer();
+                    }
+                });
+
+                // set back to default port
+                JMenuItem setDefaultPort = new JMenuItem("Default Port");
+                setDefaultPort.addActionListener(new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        setToDefautlPort();
+                    }
+                });
+
+                // Server Status menu item
+                JMenuItem serverStatusItem = new JMenuItem("Server Status");
+                serverStatusItem.addActionListener(new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        showServerStatus();
+                    }
+                });
+
+                jadxAIMcpMenu.add(configurePortItem);
+                jadxAIMcpMenu.addSeparator();
+                jadxAIMcpMenu.add(restartServerItem);
+                jadxAIMcpMenu.add(serverStatusItem);
+
+                pluginsMenu.add(jadxAIMcpMenu);
+
+                logger.info("JADX-AI-MCP Plugin: Menu items added successfully");
+
+            } catch (Exception e) {
+                logger.error("JADX-AI-MCP Plugin: Error adding menu items: " + e.getMessage(), e);
+            }
+        });
+    }
+
+    // Find existing Plugins menu or create a new one
+    private JMenu findOrCreatePluginsMenu(JMenuBar menuBar) {
+        // Look for existing "Plugins" menu
+        for (int i = 0; i < menuBar.getMenuCount(); i++) {
+            JMenu menu = menuBar.getMenu(i);
+            if (menu != null && ("Plugins".equals(menu.getText()) || "Plugin".equals(menu.getText()))) {
+                return menu;
+            }
+        }
+
+        // If no Plugins menu found, create one and add it before Help menu
+        JMenu pluginsMenu = new JMenu("Plugins");
+
+        // Try to insert before Help menu, otherwise add at the end
+        boolean inserted = false;
+        for (int i = 0; i < menuBar.getMenuCount(); i++) {
+            JMenu menu = menuBar.getMenu(i);
+            if (menu != null && "Help".equals(menu.getText())) {
+                menuBar.add(pluginsMenu, i);
+                inserted = true;
+                break;
+            }
+        }
+
+        if (!inserted) {
+            menuBar.add(pluginsMenu);
+        }
+
+        return pluginsMenu;
+    }
+
+    // set back to default port
+    private void setToDefautlPort() {
+        currentPort = 8650;
+        prefs.putInt(PREF_KEY_PORT, currentPort);
+
+        JOptionPane.showMessageDialog(
+                mainWindow,
+                "Port updated to " + currentPort + ". Server will restart automatically.",
+                "Port Updated",
+                JOptionPane.INFORMATION_MESSAGE);
+
+        restartServer();
+    }
+
+    // Show port configuration dialog
+    private void showPortConfigDialog() {
+        JPanel panel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.insets = new Insets(5, 5, 5, 5);
+        panel.add(new JLabel("Server Port:"), gbc);
+
+        JTextField portField = new JTextField(String.valueOf(currentPort), 10);
+        gbc.gridx = 1;
+        panel.add(portField, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        gbc.gridwidth = 2;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        panel.add(new JLabel("<html><i>Valid range: 1024-65535</i></html>"), gbc);
+
+        gbc.gridy = 2;
+        panel.add(new JLabel("<html><i>Current port: " + currentPort + "</i></html>"), gbc);
+
+        int result = JOptionPane.showConfirmDialog(
+                mainWindow,
+                panel,
+                "Configure AI MCP Server Port",
+                JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.PLAIN_MESSAGE);
+
+        if (result == JOptionPane.OK_OPTION) {
+            try {
+                int newPort = Integer.parseInt(portField.getText().trim());
+
+                if (newPort < 1024 || newPort > 65535) {
+                    JOptionPane.showMessageDialog(
+                            mainWindow,
+                            "Port must be between 1024 and 65535",
+                            "Invalid Port",
+                            JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+
+                if (newPort != currentPort) {
+                    currentPort = newPort;
+                    prefs.putInt(PREF_KEY_PORT, currentPort);
+
+                    JOptionPane.showMessageDialog(
+                            mainWindow,
+                            "Port updated to " + currentPort + ". Server will restart automatically.",
+                            "Port Updated",
+                            JOptionPane.INFORMATION_MESSAGE);
+
+                    restartServer();
+                }
+
+            } catch (NumberFormatException e) {
+                JOptionPane.showMessageDialog(
+                        mainWindow,
+                        "Please enter a valid port number",
+                        "Invalid Port",
+                        JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
+
+    // Restart the server with the current port
+    private void restartServer() {
+        new Thread(() -> {
+            try {
+                logger.info("JADX-AI-MCP Plugin: Restarting server on port " + currentPort);
+
+                // Stop existing server
+                if (app != null) {
+                    app.stop();
+                    app = null;
+                    serverStarted = false;
+                }
+
+                // Small delay to ensure port is released
+                Thread.sleep(1000);
+
+                // Start new server
+                start();
+
+                SwingUtilities.invokeLater(() -> {
+                    JOptionPane.showMessageDialog(
+                            mainWindow,
+                            "AI MCP Server restarted successfully on port " + currentPort,
+                            "Server Restarted",
+                            JOptionPane.INFORMATION_MESSAGE);
+                });
+
+            } catch (Exception e) {
+                logger.error("JADX-AI-MCP Plugin: Error restarting server: " + e.getMessage(), e);
+                SwingUtilities.invokeLater(() -> {
+                    JOptionPane.showMessageDialog(
+                            mainWindow,
+                            "Failed to restart server: " + e.getMessage(),
+                            "Server Restart Error",
+                            JOptionPane.ERROR_MESSAGE);
+                });
+            }
+        }, "JADX-AI-MCP-Restart").start();
+    }
+
+    // Show server status dialog
+    private void showServerStatus() {
+        String status = serverStarted && app != null ? "Running" : "Stopped";
+        String url = serverStarted ? "http://127.0.0.1:" + currentPort + "/" : "N/A";
+
+        JPanel panel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.insets = new Insets(5, 5, 5, 5);
+
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        panel.add(new JLabel("Status:"), gbc);
+        gbc.gridx = 1;
+        panel.add(new JLabel(status), gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        panel.add(new JLabel("Port:"), gbc);
+        gbc.gridx = 1;
+        panel.add(new JLabel(String.valueOf(currentPort)), gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy = 2;
+        panel.add(new JLabel("URL:"), gbc);
+        gbc.gridx = 1;
+        panel.add(new JLabel(url), gbc);
+
+        JOptionPane.showMessageDialog(
+                mainWindow,
+                panel,
+                "AI MCP Server Status",
+                JOptionPane.INFORMATION_MESSAGE);
     }
 
     // -------------------------- various request handlers -------------------------- //
@@ -306,7 +570,7 @@ public class JadxAIMCP implements JadxPlugin {
             ctx.status(400).json(Map.of("error", "Missing 'method' parameter"));
             return;
         }
-        className = className.replace('$','.');
+        className = className.replace('$', '.');
 
         try {
             JadxWrapper wrapper = mainWindow.getWrapper();
@@ -384,7 +648,7 @@ public class JadxAIMCP implements JadxPlugin {
             ctx.status(400).json(Map.of("error", "Missing 'class' parameter."));
             return;
         }
-        className = className.replace('$','.');
+        className = className.replace('$', '.');
 
         try {
             JadxWrapper wrapper = mainWindow.getWrapper();
@@ -436,7 +700,7 @@ public class JadxAIMCP implements JadxPlugin {
             ctx.status(400).json(Map.of("error", "Missing required parameter 'class'"));
             return;
         }
-        className = className.replace('$','.');
+        className = className.replace('$', '.');
 
         try {
             JadxWrapper wrapper = mainWindow.getWrapper();
@@ -469,7 +733,7 @@ public class JadxAIMCP implements JadxPlugin {
             ctx.status(400).json(Map.of("error", "Missing required parameter 'class'"));
             return;
         }
-        className = className.replace('$','.');
+        className = className.replace('$', '.');
 
         try {
             JadxWrapper wrapper = mainWindow.getWrapper();
@@ -503,7 +767,7 @@ public class JadxAIMCP implements JadxPlugin {
             ctx.status(400).json(Map.of("error", "Missing required parameter 'class' or 'newName'"));
             return;
         }
-        className = className.replace('$','.');
+        className = className.replace('$', '.');
 
         try {
             JadxWrapper wrapper = mainWindow.getWrapper();
@@ -547,9 +811,9 @@ public class JadxAIMCP implements JadxPlugin {
                 ctx.status(500).json(Map.of("error", "JadxWrapper no initialized"));
                 return;
             }
-            for(JavaClass cls:wrapper.getIncludedClassesWithInners()){
-                for(JavaMethod method : cls.getMethods()){
-                    if(method.getFullName().equalsIgnoreCase(methodName)){
+            for (JavaClass cls : wrapper.getIncludedClassesWithInners()) {
+                for (JavaMethod method : cls.getMethods()) {
+                    if (method.getFullName().equalsIgnoreCase(methodName)) {
                         ICodeNodeRef nodeRef = method.getCodeNodeRef();
                         NodeRenamedByUser event = new NodeRenamedByUser(nodeRef, method.getName(), newName);
                         event.setRenameNode(method.getMethodNode());
@@ -581,7 +845,7 @@ public class JadxAIMCP implements JadxPlugin {
             ctx.status(400).json(Map.of("error", "Missing required parameter 'class' or 'field'"));
             return;
         }
-        className = className.replace('$','.');
+        className = className.replace('$', '.');
 
         try {
             JadxWrapper wrapper = mainWindow.getWrapper();
@@ -599,7 +863,6 @@ public class JadxAIMCP implements JadxPlugin {
                             result.put("result", "rename method " + field.getName() + " to " + newFieldName);
                             ctx.status(200);
                             return;
-
 
                         }
                     }
@@ -622,7 +885,7 @@ public class JadxAIMCP implements JadxPlugin {
             ctx.status(400).json(Map.of("error", "Missing 'class' parameter."));
             return;
         }
-        className = className.replace('$','.');
+        className = className.replace('$', '.');
 
         try {
             JadxWrapper wrapper = mainWindow.getWrapper();
@@ -861,7 +1124,6 @@ public class JadxAIMCP implements JadxPlugin {
                     .json(Map.of("error", "Internal error while retrieving strings.xml file: " + e.getMessage()));
         }
     }
-
 
     // method to handle /list-resource-files-names
     private void handleListAllResourceFilesNames(Context ctx) {
