@@ -313,6 +313,7 @@ uv run jadx_mcp_server.py --http --port 9999
 
 ## 7. Custom port configuration for JADX AI MCP Plugin
 
+<img width="800" height="335" alt="image" src="https://github.com/user-attachments/assets/6243adc5-5be4-4e2d-aa16-bdaf78a28e36" />
 
 1. Configure Port: Configure the port on which the JADX AI MCP Plugin will listen on.
 2. Default Port: Revert back the changes and listen on default port.
