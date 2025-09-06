@@ -311,6 +311,39 @@ OR
 uv run jadx_mcp_server.py --http --port 9999
 ```
 
+## 7. Custom port configuration for JADX AI MCP Plugin
+
+
+1. Configure Port: Configure the port on which the JADX AI MCP Plugin will listen on.
+2. Default Port: Revert back the changes and listen on default port.
+3. Restart Server: Force restart the JADX AI MCP Plugin server.
+4. Server Status: Check the status of JADX AI MCP Plugin server.
+
+To connect with JADX AI MCP Plugin running on custom port, the `--jadx-port` option will be used as shown in following:
+```
+uv run jadx_mcp_server.py --jadx-port 8652
+```
+
+The MCP Configuration for above will be as follows for claude:
+
+```
+{
+  "mcpServers": {
+    "jadx-mcp-server": {
+      "command": "/path/to/uv",
+      "args": [
+        "--directory",
+        "/path/to/jadx-mcp-server/",
+        "run",
+        "jadx_mcp_server.py",
+        "--jadx-port",
+        "8652"
+      ]
+    }
+  }
+}
+```
+
 ## Give it a shot
 
 1. Run jadx-gui and load any .apk file

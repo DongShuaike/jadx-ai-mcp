@@ -235,10 +235,11 @@ public class JadxAIMCP implements JadxPlugin {
             app.get("/rename-class", this::handleRenameClass);
             app.get("/rename-method", this::handleRenameMethod);
             app.get("/rename-field", this::handleRenameField);
+            app.get("/health",this::handleHealth);
 
             logger.info(
                     "// -------------------- JADX AI MCP PLUGIN -------------------- //\n - By Jafar Pathan (https://github.com/zinja-coder)\n - To Report Issues : https://github.com/zinja-coder/jadx-ai-mcp\n\n");
-            logger.info("JADX AI MCP Plugin HTTP Serve Started at http://127.0.0.1:8650/");
+            logger.info("JADX AI MCP Plugin HTTP Server Started at http://127.0.0.1:"+currentPort+"/");
         } catch (Exception e) {
             logger.error("JADX-AI-MCP Plugin Error: Could not start HTTP Server on. Exception: "
                     + e.getMessage().toString());
@@ -280,8 +281,8 @@ public class JadxAIMCP implements JadxPlugin {
                 });
 
                 // set back to default port
-                JMenuItem setDefaultPort = new JMenuItem("Default Port");
-                setDefaultPort.addActionListener(new ActionListener() {
+                JMenuItem setDefaultPortItem = new JMenuItem("Default Port");
+                setDefaultPortItem.addActionListener(new ActionListener() {
                     @Override
                     public void actionPerformed(ActionEvent e) {
                         setToDefautlPort();
@@ -299,6 +300,7 @@ public class JadxAIMCP implements JadxPlugin {
 
                 jadxAIMcpMenu.add(configurePortItem);
                 jadxAIMcpMenu.addSeparator();
+                jadxAIMcpMenu.add(setDefaultPortItem);
                 jadxAIMcpMenu.add(restartServerItem);
                 jadxAIMcpMenu.add(serverStatusItem);
 
@@ -500,6 +502,24 @@ public class JadxAIMCP implements JadxPlugin {
     }
 
     // -------------------------- various request handlers -------------------------- //
+
+    // method to handle /health request which is used to ensure plugin and mcp server are properly started //
+    public void handleHealth(Context ctx) {
+        try {
+            String status = serverStarted && app != null ? "Running" : "Stopped";
+            String url = serverStarted ? "http://127.0.0.1:" + currentPort + "/" : "N/A";
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("status", status);
+            result.put("url", url);
+            logger.info("JADX AI MCP Plugin: GOT HEALTH PING");
+            ctx.json(result);
+        } catch (Exception e) {
+            logger.error("JADX AI MCP Error: " + e.getMessage(), e);
+            ctx.status(500)
+                    .json(Map.of("error", "Internal Error while trying to handle health ping request: " + e.getMessage()));
+        }
+    }
 
     // method to handle /current-class request //
     public void handleCurrentClass(Context ctx) {
