@@ -153,7 +153,7 @@ The following MCP tools are available:
 
 ## 🛠️ Getting Started 
 
-### 1. Downlaod from Releases: https://github.com/zinja-coder/jadx-ai-mcp/releases
+### 1. Download from Releases: https://github.com/zinja-coder/jadx-ai-mcp/releases
 
 > [!NOTE]
 >
