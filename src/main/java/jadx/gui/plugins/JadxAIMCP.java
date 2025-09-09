@@ -1310,70 +1310,66 @@ public class JadxAIMCP implements JadxPlugin {
         }
     }
 
-    // method to handle /strings
-    // method to handle /strings
-    private void handleStrings(Context ctx) {
-        try {
-            JadxWrapper wrapper = mainWindow.getWrapper();
-            List<ResourceFile> resourceFiles = wrapper.getResources();
+// method to handle /strings
+private void handleStrings(Context ctx) {
+    try {
+        JadxWrapper wrapper = mainWindow.getWrapper();
+        List<ResourceFile> resourceFiles = wrapper.getResources();
 
-            // Collect all strings.xml entries first
-            List<Map<String, Object>> allStringEntries = new ArrayList<>();
-            for (ResourceFile resFile : resourceFiles) {
-                try {
-                    if ("resources.arsc".equals(resFile.getDeobfName())) {
-                        ResContainer container = resFile.loadContent();
-                        List<ResContainer> subFiles = container.getSubFiles();
-                        for (ResContainer file : subFiles) {
-                            if ("res/values/strings.xml".equals(file.getFileName())) {
-                                Map<String, Object> entry = new HashMap<>();
-                                entry.put("file", file.getFileName());
-                                entry.put("content", file.getText().getCodeStr());
-                                allStringEntries.add(entry);
-                            }
+        // Explicit element type
+        List<Map<String, Object>> allStringEntries = new ArrayList<>();
+
+        for (ResourceFile resFile : resourceFiles) {
+            try {
+                if ("resources.arsc".equals(resFile.getDeobfName())) {
+                    ResContainer container = resFile.loadContent();
+                    List<ResContainer> subFiles = container.getSubFiles();
+                    for (ResContainer file : subFiles) {
+                        if ("res/values/strings.xml".equals(file.getFileName())) {
+                            Map<String, Object> entry = new HashMap<>();
+                            entry.put("file", file.getFileName());
+                            entry.put("content", file.getText().getCodeStr());
+                            allStringEntries.add(entry);
                         }
-                    } else if ("res/values/strings.xml".equals(resFile.getDeobfName())) {
-                        // In case strings.xml is exposed directly (rare but safe to support)
-                        ResContainer container = resFile.loadContent();
-                        Map<String, Object> entry = new HashMap<>();
-                        entry.put("file", resFile.getDeobfName());
-                        entry.put("content", container.getText().getCodeStr());
-                        allStringEntries.add(entry);
                     }
-                } catch (Exception e) {
-                    logger.error("JADX AI MCP Error: {}", e.getMessage(), e);
+                } else if ("res/values/strings.xml".equals(resFile.getDeobfName())) {
+                    ResContainer container = resFile.loadContent();
+                    Map<String, Object> entry = new HashMap<>();
+                    entry.put("file", resFile.getDeobfName());
+                    entry.put("content", container.getText().getCodeStr());
+                    allStringEntries.add(entry);
                 }
+            } catch (Exception e) {
+                logger.error("JADX AI MCP Error: {}", e.getMessage(), e);
             }
-
-            if (allStringEntries.isEmpty()) {
-                ctx.status(404).json(Map.of("error", "No strings.xml resource found"));
-                return;
-            }
-
-            // Use shared pagination utility (same as /all-classes)
-            Map<String, Object> result = PaginationUtils.handlePagination(
-                    ctx,
-                    allStringEntries,
-                    "resource/strings-xml", // type
-                    "strings", // items key expected by MCP client
-                    (Function<Map<String, Object>, Map<String, Object>>) item -> {
-                        // identity transform; keep only stable keys
-                        Map<String, Object> out = new HashMap<>();
-                        out.put("file", item.get("file"));
-                        out.put("content", item.get("content"));
-                        return out;
-                    });
-
-            ctx.json(result);
-        } catch (PaginationUtils.PaginationException e) {
-            logger.error("JADX AI MCP Pagination Error: {}", e.getMessage());
-            ctx.status(400).json(Map.of("error", "Pagination error: " + e.getMessage()));
-        } catch (Exception e) {
-            logger.error("JADX AI MCP Error: {}", e.getMessage(), e);
-            ctx.status(500)
-                    .json(Map.of("error", "Internal error while retrieving strings.xml file: " + e.getMessage()));
         }
+
+        if (allStringEntries.isEmpty()) {
+            ctx.status(404).json(Map.of("error", "No strings.xml resource found"));
+            return;
+        }
+
+        // Use the generic pagination with an explicit transformer signature
+        Map<String, Object> result = PaginationUtils.handlePagination(
+            ctx,
+            allStringEntries,
+            "resource/strings-xml",
+            "strings",
+            (java.util.function.Function<Map<String, Object>, Object>) item -> {
+                // Return the same map as Object to satisfy Function<T, Object>
+                return item;
+            }
+        );
+
+        ctx.json(result);
+    } catch (JadxAIMCP.PaginationUtils.PaginationException e) {
+        logger.error("JADX AI MCP Pagination Error: {}", e.getMessage());
+        ctx.status(400).json(Map.of("error", "Pagination error: " + e.getMessage()));
+    } catch (Exception e) {
+        logger.error("JADX AI MCP Error: {}", e.getMessage(), e);
+        ctx.status(500).json(Map.of("error", "Internal error while retrieving strings.xml file: " + e.getMessage()));
     }
+}
 
     // method to handle /list-resource-files-names
     private void handleListAllResourceFilesNames(Context ctx) {
