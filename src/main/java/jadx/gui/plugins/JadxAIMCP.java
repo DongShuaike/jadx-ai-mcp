@@ -504,9 +504,7 @@ public class JadxAIMCP implements JadxPlugin {
                 JOptionPane.INFORMATION_MESSAGE);
     }
 
-/**
- * Utility class for handling pagination across different MCP tools
- */
+// Utility class for handling pagination across different MCP tools
 public static class PaginationUtils {
     
     // Configuration constants
@@ -514,9 +512,7 @@ public static class PaginationUtils {
     public static final int MAX_PAGE_SIZE = 10000;
     public static final int MAX_OFFSET = 1000000;
     
-    /**
-     * Generic pagination handler that can be used by any endpoint
-     */
+    // Generic pagination handler that can be used by any endpoint
     public static <T> Map<String, Object> handlePagination(
             Context ctx, 
             List<T> allItems, 
@@ -526,9 +522,7 @@ public static class PaginationUtils {
         return handlePagination(ctx, allItems, dataType, itemsKey, item -> item.toString());
     }
     
-    /**
-     * Generic pagination handler with custom item transformer
-     */
+    // Generic pagination handler with custom item transformer
     public static <T> Map<String, Object> handlePagination(
             Context ctx, 
             List<T> allItems, 
@@ -558,9 +552,7 @@ public static class PaginationUtils {
         return buildPaginationResponse(transformedItems, params, bounds, totalItems, dataType, itemsKey);
     }
     
-    /**
-     * Parse and validate pagination parameters
-     */
+    // Parse and validate pagination parameters
     private static PaginationParams parsePaginationParams(Context ctx, int totalItems) throws PaginationException {
         String offsetParam = ctx.queryParam("offset");
         String limitParam = ctx.queryParam("limit");
@@ -616,9 +608,7 @@ public static class PaginationUtils {
         return new PaginationParams(offset, effectiveLimit, requestedLimit, hasCustomLimit);
     }
     
-    /**
-     * Calculate pagination boundaries
-     */
+    // Calculate pagination boundaries
     private static PaginationBounds calculatePaginationBounds(PaginationParams params, int totalItems) {
         if (params.offset >= totalItems) {
             return new PaginationBounds(0, 0, false, totalItems);
@@ -632,9 +622,7 @@ public static class PaginationUtils {
         return new PaginationBounds(startIndex, endIndex, hasMore, nextOffset);
     }
     
-    /**
-     * Build comprehensive pagination response
-     */
+    // Build comprehensive pagination response
     private static Map<String, Object> buildPaginationResponse(
             List<Object> data, 
             PaginationParams params, 
