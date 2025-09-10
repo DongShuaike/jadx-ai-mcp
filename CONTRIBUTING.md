@@ -24,7 +24,7 @@ Thank you for considering contributing to the project! We welcome contributions 
                          -Dpackaging=jar
 
    # For example
-   mvn install:install-file -Dfile=lib/jadx--1.5.1-all.jar \
+   mvn install:install-file -Dfile=lib/jadx-1.5.1-all.jar \
                          -DgroupId=io.github.skylot \
                          -DartifactId=jadx-all \
                          -Dversion=1.5.1 \
