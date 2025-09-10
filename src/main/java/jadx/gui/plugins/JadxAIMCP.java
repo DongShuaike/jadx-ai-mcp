@@ -937,8 +937,9 @@ public class JadxAIMCP implements JadxPlugin {
                 if (cls.getFullName().equals(className)) {
                     List<String> methods = new ArrayList<>();
                     for (JavaMethod method : cls.getMethods()) {
+                        String fullMethodName = cls.getFullName()+"."+method.getName();
                         String methodData = method.getAccessFlags() + " " + method.getReturnType() + " " +
-                                method.getName() + method.getMethodNode() + method.getFullName();
+                                method.getName() +" "+ method.getMethodNode()+" " + fullMethodName;
                         methods.add(methodData);
                     }
                     ctx.result(String.join("\n", methods));
@@ -1027,12 +1028,16 @@ public class JadxAIMCP implements JadxPlugin {
         String methodName = ctx.queryParam("method");
         String newName = ctx.queryParam("newName");
 
-        if (methodName == null || methodName.isEmpty()) {
-            logger.error("JADX AI MCP Error: Missing 'method' parameter.");
-            ctx.status(400).json(Map.of("error", "Missing 'method' parameter"));
+        if (methodName == null || methodName.isEmpty() || newName == null || newName.isEmpty()) {
+            logger.error("JADX AI MCP Error: Missing 'method' or 'newName' parameter.");
+            ctx.status(400).json(Map.of("error", "Missing 'method' or 'newName' parameter"));
             return;
         }
-
+        // remove useless string
+        int index = methodName.indexOf('(');
+        if(index != -1){
+            methodName = methodName.substring(0, index);
+        }
         try {
             JadxWrapper wrapper = mainWindow.getWrapper();
             if (wrapper == null) {
@@ -1041,8 +1046,10 @@ public class JadxAIMCP implements JadxPlugin {
                 return;
             }
             for (JavaClass cls : wrapper.getIncludedClassesWithInners()) {
+                String className = cls.getFullName().replace('$', '.');
                 for (JavaMethod method : cls.getMethods()) {
-                    if (method.getFullName().equalsIgnoreCase(methodName)) {
+                    String fullMethodName = className+"."+method.getName();
+                    if (fullMethodName.equalsIgnoreCase(methodName)) {
                         ICodeNodeRef nodeRef = method.getCodeNodeRef();
                         NodeRenamedByUser event = new NodeRenamedByUser(nodeRef, method.getName(), newName);
                         event.setRenameNode(method.getMethodNode());
@@ -1056,6 +1063,9 @@ public class JadxAIMCP implements JadxPlugin {
                     }
                 }
             }
+            Map<String, Object> result = new HashMap<>();
+            result.put("result", "method not found");
+            ctx.status(400);
         } catch (Exception e) {
             logger.error("JADX AI MCP Error: " + e.getMessage(), e);
             ctx.status(500)

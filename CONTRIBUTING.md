@@ -17,14 +17,14 @@ Thank you for considering contributing to the project! We welcome contributions 
    git checkout -b your-feature-branch
 
    # Add jadx jar file as dependecy in your local maven repository
-   mvn install:install-file -Dfile=path/to/jadx-all-<version>.jar \
+   mvn install:install-file -Dfile=path/to/jadx-<version>-all.jar \
                          -DgroupId=io.github.skylot \
                          -DartifactId=jadx-all \
                          -Dversion=<version> \
                          -Dpackaging=jar
 
    # For example
-   mvn install:install-file -Dfile=lib/jadx-all-1.5.1.jar \
+   mvn install:install-file -Dfile=lib/jadx--1.5.1-all.jar \
                          -DgroupId=io.github.skylot \
                          -DartifactId=jadx-all \
                          -Dversion=1.5.1 \
