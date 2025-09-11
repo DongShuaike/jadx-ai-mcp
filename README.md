@@ -278,6 +278,16 @@ repository
 
 Then, navigate code and interact via real-time code review prompts using the built-in integration.
 
+**OR**
+
+or you can install the jadx_mcp_server directly as executable directly using below command:
+
+```
+uv tool install git+https://github.com/zinja-coder/jadx-mcp-server
+```
+
+and then you can just provide `jadx_mcp_server` in `command` section of mcp configuration.
+
 ## 4. Use Cherry Studio
 
 If you want to configure the MCP tool in Cherry Studio, you can refer to the following configuration.
