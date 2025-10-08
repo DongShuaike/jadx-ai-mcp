@@ -391,22 +391,9 @@ This plugin allows total control over the GUI and internal project model to supp
 
 ---
 
-## 🛣️ Future Roadmap
+## Troubleshooting
 
-- [x] Add Support for apktool
-
- - [ ] Add support for hermes code (ReactNative Application)
-
- - [ ] Add more useful MCP Tools
-
- - [ ] Make LLM be able to modify code on JADX
-
- - [ ] Add prompts templates, give llm access to Android APK Files as Resources
-
- - [x] Build MCP Client to support Local LLM
-
- - [ ] **END-GOAL** : Make all android reverse engineering and APK modification tools Connect with single MCP server to make reverse engineering apk files as easy as possible purely from vibes.
-
+[Check here](https://github.com/zinja-coder/jadx-ai-mcp/edit/jadx-ai/TROUBLESHOOTING.md)
 
 ## NOTE For Contributors
 
