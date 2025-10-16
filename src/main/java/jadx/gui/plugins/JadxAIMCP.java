@@ -883,7 +883,6 @@ public class JadxAIMCP implements JadxPlugin {
             for (JavaClass cls : wrapper.getIncludedClassesWithInners()) {
                 if (cls.getFullName().equals(className)) {
                     ctx.result(cls.getCode());
-                    logger.info(cls.getCode().toString());
                     return;
                 }
             }
