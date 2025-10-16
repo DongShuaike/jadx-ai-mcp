@@ -707,8 +707,7 @@ public class JadxAIMCP implements JadxPlugin {
         }
     }
 
-    // -------------------------- various request handlers
-    // -------------------------- //
+    // -------------------------- various request handlers -------------------------- //
 
     // method to handle /health request which is used to ensure plugin and mcp
     // server are properly started //
@@ -884,6 +883,7 @@ public class JadxAIMCP implements JadxPlugin {
             for (JavaClass cls : wrapper.getIncludedClassesWithInners()) {
                 if (cls.getFullName().equals(className)) {
                     ctx.result(cls.getCode());
+                    logger.info(cls.getCode().toString());
                     return;
                 }
             }
@@ -914,6 +914,7 @@ public class JadxAIMCP implements JadxPlugin {
                 }
             }
             ctx.result(String.join("\n", results));
+            logger.debug(ctx.body());
         } catch (Exception e) {
             logger.error("JADX AI MCP Error: " + e.getMessage(), e);
             ctx.status(500).json(Map.of("error", "Internal error during method search: " + e.getMessage()));
@@ -922,7 +923,7 @@ public class JadxAIMCP implements JadxPlugin {
 
     // method to handle /methods-of-class call
     private void handleMethodsOfClass(Context ctx) {
-        String className = ctx.queryParam("class");
+        String className = ctx.queryParam("class_name");
 
         if (className == null || className.isEmpty()) {
             logger.error("JADX AI MCP Error: Missing 'class' parameter.");
@@ -956,10 +957,10 @@ public class JadxAIMCP implements JadxPlugin {
 
     // method to handle /fields-of-class call
     private void handleFieldsOfClass(Context ctx) {
-        String className = ctx.queryParam("class");
+        String className = ctx.queryParam("class_name");
 
         if (className == null || className.isEmpty()) {
-            logger.error("JADX AI MCP Error: Missing 'class' parameter.");
+            logger.error("JADX AI MCP Error: Missing 'class_name' parameter.");
             ctx.status(400).json(Map.of("error", "Missing required parameter 'class'"));
             return;
         }
@@ -1470,8 +1471,7 @@ private void handleStrings(Context ctx) {
         }
     }
 
-    // -------------------------- helper methods to assist the request handler
-    // methods -------------------------- //
+    // -------------------------- helper methods to assist the request handler methods -------------------------- //
     private String getSelectedTabTitle() {
         JTabbedPane tabs = mainWindow.getTabbedPane();
         int index = tabs.getSelectedIndex();
