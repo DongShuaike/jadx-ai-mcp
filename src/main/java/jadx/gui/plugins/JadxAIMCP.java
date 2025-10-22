@@ -52,6 +52,9 @@ import java.util.stream.Collectors;
 import java.util.prefs.Preferences;
 import java.util.function.Function;
 
+// Importing custom banner string
+import jadx.gui.plugins.JadxAIMCPBanner;
+
 public class JadxAIMCP implements JadxPlugin {
     private MainWindow mainWindow;
     private Javalin app;
@@ -240,8 +243,9 @@ public class JadxAIMCP implements JadxPlugin {
             app.get("/rename-field", this::handleRenameField);
             app.get("/health", this::handleHealth);
 
+            logger.info(JadxAIMCPBanner.banner);
             logger.info(
-                    "// -------------------- JADX AI MCP PLUGIN -------------------- //\n - By Jafar Pathan (https://github.com/zinja-coder)\n - To Report Issues : https://github.com/zinja-coder/jadx-ai-mcp\n\n");
+                    "// -------------------- JADX AI MCP PLUGIN -------------------- //\n\n");
             logger.info("JADX AI MCP Plugin HTTP Server Started at http://127.0.0.1:" + currentPort + "/");
         } catch (Exception e) {
             logger.error("JADX-AI-MCP Plugin Error: Could not start HTTP Server on. Exception: "
