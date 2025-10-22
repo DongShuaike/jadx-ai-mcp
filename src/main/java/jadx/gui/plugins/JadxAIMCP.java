@@ -798,7 +798,10 @@ public class JadxAIMCP implements JadxPlugin {
             ctx.status(400).json(Map.of("error", "Missing 'method' parameter"));
             return;
         }
-        className = className.replace('$', '.');
+
+        // Removing this line to solve issue #37 as raised and contributed by github@ljt270864457
+        // This solves following bug -> Bug: Inner classes with $ symbol cannot be retrieved via /class-source endpoint
+        // className = className.replace('$', '.');
 
         try {
             JadxWrapper wrapper = mainWindow.getWrapper();
@@ -876,7 +879,10 @@ public class JadxAIMCP implements JadxPlugin {
             ctx.status(400).json(Map.of("error", "Missing 'class' parameter."));
             return;
         }
-        className = className.replace('$', '.');
+
+        // Removing this line to solve issue #37 as raised and contributed by github@ljt270864457
+        // This solves following bug -> Bug: Inner classes with $ symbol cannot be retrieved via /class-source endpoint
+        // className = className.replace('$', '.');
 
         try {
             JadxWrapper wrapper = mainWindow.getWrapper();
@@ -929,7 +935,10 @@ public class JadxAIMCP implements JadxPlugin {
             ctx.status(400).json(Map.of("error", "Missing required parameter 'class'"));
             return;
         }
-        className = className.replace('$', '.');
+        
+        // Removing this line to solve issue #37 as raised and contributed by github@ljt270864457
+        // This solves following bug -> Bug: Inner classes with $ symbol cannot be retrieved via /class-source endpoint
+        // className = className.replace('$', '.');
 
         try {
             JadxWrapper wrapper = mainWindow.getWrapper();
@@ -963,7 +972,10 @@ public class JadxAIMCP implements JadxPlugin {
             ctx.status(400).json(Map.of("error", "Missing required parameter 'class'"));
             return;
         }
-        className = className.replace('$', '.');
+        
+        // Removing this line to solve issue #37 as raised and contributed by github@ljt270864457
+        // This solves following bug -> Bug: Inner classes with $ symbol cannot be retrieved via /class-source endpoint
+        // className = className.replace('$', '.');
 
         try {
             JadxWrapper wrapper = mainWindow.getWrapper();
@@ -997,7 +1009,10 @@ public class JadxAIMCP implements JadxPlugin {
             ctx.status(400).json(Map.of("error", "Missing required parameter 'class' or 'newName'"));
             return;
         }
-        className = className.replace('$', '.');
+        
+        // Removing this line to solve issue #37 as raised and contributed by github@ljt270864457
+        // This solves following bug -> Bug: Inner classes with $ symbol cannot be retrieved via /class-source endpoint
+        // className = className.replace('$', '.');
 
         try {
             JadxWrapper wrapper = mainWindow.getWrapper();
@@ -1084,7 +1099,10 @@ public class JadxAIMCP implements JadxPlugin {
             ctx.status(400).json(Map.of("error", "Missing required parameter 'class' or 'field'"));
             return;
         }
-        className = className.replace('$', '.');
+        
+        // Removing this line to solve issue #37 as raised and contributed by github@ljt270864457
+        // This solves following bug -> Bug: Inner classes with $ symbol cannot be retrieved via /class-source endpoint
+        // className = className.replace('$', '.');
 
         try {
             JadxWrapper wrapper = mainWindow.getWrapper();
@@ -1124,7 +1142,10 @@ public class JadxAIMCP implements JadxPlugin {
             ctx.status(400).json(Map.of("error", "Missing 'class' parameter."));
             return;
         }
-        className = className.replace('$', '.');
+        
+        // Removing this line to solve issue #37 as raised and contributed by github@ljt270864457
+        // This solves following bug -> Bug: Inner classes with $ symbol cannot be retrieved via /class-source endpoint
+        // className = className.replace('$', '.');
 
         try {
             JadxWrapper wrapper = mainWindow.getWrapper();
