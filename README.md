@@ -498,6 +498,19 @@ And in last thanks to [@anthropics](https://github.com/anthropics) for developin
 
 Apart from this, huge thanks to all open source projects which serve as a dependencies for this project and which made this possible.
 
+### Dependencies
+
+This project uses following awesome libraries.
+
+- Plugin - Java
+  - Javalin     - https://javalin.io/ - Apache 2.0 License
+  - SLF4J       - https://slf4j.org/  - MIT License
+  - org.w3c.dom - https://mvnrepository.com/artifact/org.w3c.dom - W3C Software and Document License
+
+- MCP Server - Python
+  - FastMCP - https://github.com/jlowin/fastmcp - Apache 2.0 License
+  - httpx   - https://www.python-httpx.org      - BSD-3-Clause (“BSD licensed”) 
+
 ## 📄 License
 
 JADX-AI-MCP and all related projects inherits the Apache 2.0 License from the original JADX repository.
