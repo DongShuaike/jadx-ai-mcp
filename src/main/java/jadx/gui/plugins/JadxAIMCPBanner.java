@@ -13,5 +13,5 @@ public class JadxAIMCPBanner {
             "\n\n"+
             "\nAuthor         -> Jafar Pathan (zinja-coder@github)"+
             "\nFor Issues     -> https://github.com/zinja-coder/jadx-ai-mcp"+
-            "\nPlugin Version -> v3.3.4";
+            "\nPlugin Version -> v3.3.5";
 }
