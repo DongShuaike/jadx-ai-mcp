@@ -5,7 +5,7 @@
 
     <groupId>com.zin.jadxaimcp</groupId>
     <artifactId>jadx-ai-mcp</artifactId>
-    <version>3.3.6</version>
+    <version>4.0.0</version>
 
     <properties>
         <maven.compiler.source>11</maven.compiler.source>

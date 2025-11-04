@@ -44,6 +44,8 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Document;
 
 import javax.swing.*;
+import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.TreeNode;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -251,6 +253,8 @@ public class JadxAIMCP implements JadxPlugin {
             app.get("/health", this::handleHealth);
 
             app.get("/debug/stack-frames", this::handleGetStackFrames);
+            app.get("/debug/variables", this::handleGetVariables);
+            app.get("/debug/threads", this::handleGetThreads);
 
             logger.info(JadxAIMCPBanner.banner);
             logger.info(
@@ -1562,6 +1566,122 @@ private void handleStrings(Context ctx) {
         }
     }
 
+
+/**
+ * Get threads from JComboBox UI component
+ * Uses DefaultComboBoxModel API
+ */
+private void handleGetThreads(Context ctx) {
+    try {
+        JDebuggerPanel debuggerPanel = mainWindow.getDebuggerPanel();
+        if (debuggerPanel == null) {
+            ctx.status(400).json(Map.of("error", "Debugger panel not initialized"));
+            return;
+        }
+        
+        IDebugController controller = debuggerPanel.getDbgController();
+        if (controller == null || !controller.isDebugging()) {
+            ctx.status(400).json(Map.of("error", "Debugger not attached"));
+            return;
+        }
+        
+        try {
+            // Access threadBox through reflection
+            java.lang.reflect.Field threadField = JDebuggerPanel.class.getDeclaredField("threadBox");
+            threadField.setAccessible(true);
+            @SuppressWarnings("unchecked")
+            JComboBox<JDebuggerPanel.IListElement> threadBox = 
+                (JComboBox<JDebuggerPanel.IListElement>) threadField.get(debuggerPanel);
+            
+            // Get the combo box model
+            DefaultComboBoxModel<JDebuggerPanel.IListElement> model = 
+                (DefaultComboBoxModel<JDebuggerPanel.IListElement>) threadBox.getModel();
+            
+            List<String> threads = new ArrayList<>();
+            String selectedThread = null;
+            
+            // Iterate through all elements in the combo box
+            for (int i = 0; i < model.getSize(); i++) {
+                JDebuggerPanel.IListElement element = model.getElementAt(i);
+                threads.add(element.toString());
+            }
+            
+            // Get selected thread
+            Object selected = model.getSelectedItem();
+            if (selected != null) {
+                selectedThread = selected.toString();
+            }
+            
+            Map<String, Object> result = new HashMap<>();
+            result.put("threads", threads);
+            result.put("selectedThread", selectedThread);
+            result.put("count", threads.size());
+            
+            ctx.json(result);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            ctx.status(500).json(Map.of("error", "Failed to access thread box: " + e.getMessage()));
+        }
+    } catch (Exception e) {
+        logger.error("JADX AI MCP Debug Error: " + e.getMessage(), e);
+        ctx.status(500).json(Map.of("error", "Failed to get threads: " + e.getMessage()));
+    }
+}
+
+/**
+ * Get all variables (registers and 'this' object fields)
+ * Extracts from JTree UI components: regTreeNode and thisTreeNode
+ */
+private void handleGetVariables(Context ctx) {
+    try {
+        JDebuggerPanel debuggerPanel = mainWindow.getDebuggerPanel();
+        if (debuggerPanel == null) {
+            ctx.status(400).json(Map.of("error", "Debugger panel not initialized"));
+            return;
+        }
+        
+        IDebugController controller = debuggerPanel.getDbgController();
+        if (controller == null || !controller.isDebugging()) {
+            ctx.status(400).json(Map.of("error", "Debugger not attached"));
+            return;
+        }
+        
+        if (!controller.isSuspended()) {
+            ctx.status(400).json(Map.of("error", "Process not suspended. Variables only available when paused."));
+            return;
+        }
+        
+        Map<String, Object> variables = new HashMap<>();
+        
+        // Access the variable tree through reflection since fields are private
+        try {
+            // Get regTreeNode (registers/local variables)
+            java.lang.reflect.Field regField = JDebuggerPanel.class.getDeclaredField("regTreeNode");
+            regField.setAccessible(true);
+            DefaultMutableTreeNode regTreeNode = (DefaultMutableTreeNode) regField.get(debuggerPanel);
+            
+            // Get thisTreeNode (object fields)
+            java.lang.reflect.Field thisField = JDebuggerPanel.class.getDeclaredField("thisTreeNode");
+            thisField.setAccessible(true);
+            DefaultMutableTreeNode thisTreeNode = (DefaultMutableTreeNode) thisField.get(debuggerPanel);
+            
+            // Extract register variables
+            List<Map<String, Object>> registers = extractTreeNodeData(regTreeNode);
+            variables.put("registers", registers);
+            
+            // Extract 'this' object fields
+            List<Map<String, Object>> thisFields = extractTreeNodeData(thisTreeNode);
+            variables.put("thisObject", thisFields);
+            
+            ctx.json(variables);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            ctx.status(500).json(Map.of("error", "Failed to access tree nodes: " + e.getMessage()));
+        }
+    } catch (Exception e) {
+        logger.error("JADX AI MCP Debug Error: " + e.getMessage(), e);
+        ctx.status(500).json(Map.of("error", "Failed to get variables: " + e.getMessage()));
+    }
+}
+
     // -------------------------- helper methods to assist the request handler methods -------------------------- //
     private String getSelectedTabTitle() {
         JTabbedPane tabs = mainWindow.getTabbedPane();
@@ -1586,6 +1706,39 @@ private void handleStrings(Context ctx) {
             }
         }
         return null;
+    }
+
+    /**
+     * Helper method to extract data from JTree nodes
+     * Uses standard Swing TreeNode API
+     */
+    private List<Map<String, Object>> extractTreeNodeData(DefaultMutableTreeNode node) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        
+        // Iterate through all children of the node
+        for (int i = 0; i < node.getChildCount(); i++) {
+            TreeNode childNode = node.getChildAt(i);
+            
+            if (childNode instanceof JDebuggerPanel.ValueTreeNode) {
+                JDebuggerPanel.ValueTreeNode valueNode = (JDebuggerPanel.ValueTreeNode) childNode;
+                
+                Map<String, Object> varInfo = new HashMap<>();
+                varInfo.put("name", valueNode.getName());
+                varInfo.put("value", valueNode.getValue());
+                varInfo.put("type", valueNode.getType());
+                varInfo.put("typeId", valueNode.getTypeID());
+                varInfo.put("updated", valueNode.isUpdated());
+                
+                // Recursively extract children if any
+                if (valueNode.getChildCount() > 0) {
+                    varInfo.put("children", extractTreeNodeData(valueNode));
+                }
+                
+                result.add(varInfo);
+            }
+        }
+        
+        return result;
     }
 
     // reusing jadx's secure xml parsing logic for parsing manifest xml file
