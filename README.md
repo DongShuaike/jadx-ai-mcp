@@ -145,6 +145,10 @@ https://github.com/user-attachments/assets/b4a6b280-5aa9-4e76-ac72-a0abec73b809
 
 https://github.com/user-attachments/assets/f42d8072-0e3e-4f03-93ea-121af4e66eb1
 
+- **Your AI Assistant during debugging of APK using JADX**
+
+https://github.com/user-attachments/assets/2b0bd9b1-95c1-4f32-9b0c-38b864dd6aec
+
 It is combination of two tools:
 1. JADX-AI-MCP
 2. [JADX MCP SERVER](https://github.com/zinja-coder/jadx-mcp-server)
@@ -183,6 +187,9 @@ The following MCP tools are available:
 - `rename_class()` : Renames the class name
 - `rename_method()` : Renames the method
 - `rename_field()` : Renames the field
+- `debug_get_stack_frames()` : Get the stack frames from jadx debugger
+- `debug_get_threads()` : Get the insights of threads from jadx debugger
+- `debug_get_variables()` : Get the variables from jadx debugger
   
 ---
 
@@ -239,6 +246,16 @@ The following MCP tools are available:
     "What package or app component does this class likely belong to?"
 
     "Can you identify the Android component type (Activity, Service, etc.)?"
+
+🐞 Debugger Assistant
+```
+   "Fetch stack frames, varirables and threads from debugger and provide summary"
+
+   "Based the stack frames from debugger, explain the execution flow of the application"
+
+   "Based on the state of variables, is there security threat?"
+```
+
 ---
 
 ## 🛠️ Getting Started 
