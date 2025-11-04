@@ -5,7 +5,7 @@
 
 // TO DO break down code into smaller files
 
-package jadx.gui.plugins;
+package com.zin.jadxaimcp;
 
 import io.javalin.Javalin;
 import io.javalin.http.Context;
@@ -53,7 +53,7 @@ import java.util.prefs.Preferences;
 import java.util.function.Function;
 
 // Importing custom banner string
-import jadx.gui.plugins.JadxAIMCPBanner;
+import com.zin.jadxaimcp.JadxAIMCPBanner;
 
 public class JadxAIMCP implements JadxPlugin {
     private MainWindow mainWindow;
@@ -896,8 +896,8 @@ public class JadxAIMCP implements JadxPlugin {
                     return;
                 }
             }
-            ctx.status(404).json(Map.of("error", "Class not found."));
-            logger.error("JADX AI MCP Error: Class not found.");
+            ctx.status(404).json(Map.of("error", "Class " + className + " not  found."));
+            logger.error("JADX AI MCP Error: Class " + className + " not  found.");
         } catch (Exception e) {
             logger.error("JADX AI MCP Error: " + e.getMessage(), e);
             ctx.status(500).json(Map.of("error", "Internal error retrieving class source: " + e.getMessage()));
@@ -959,8 +959,8 @@ public class JadxAIMCP implements JadxPlugin {
                     return;
                 }
             }
-            ctx.status(404).json(Map.of("error", "Class not found."));
-            logger.error("JADX AI MCP Error: Class not found.");
+            ctx.status(404).json(Map.of("error", "Class " + className + " not  found."));
+            logger.error("JADX AI MCP Error: Class " + className + " not  found.");
         } catch (Exception e) {
             logger.error("JADX AI MCP Error: " + e.getMessage(), e);
             ctx.status(500).json(Map.of("error", "Internal error retrieving methods: " + e.getMessage()));
@@ -995,8 +995,8 @@ public class JadxAIMCP implements JadxPlugin {
                     return;
                 }
             }
-            ctx.status(404).json(Map.of("error", "Class not found"));
-            logger.error("JADX AI MCP Error: Class not found.");
+            ctx.status(404).json(Map.of("error", "Class " + className + " not  found."));
+            logger.error("JADX AI MCP Error: Class " + className + " not  found.");
         } catch (Exception e) {
             logger.error("JADX AI MCP Error: " + e.getMessage(), e);
             ctx.status(500).json(Map.of("error", "Internal error retrieving fields: " + e.getMessage()));
@@ -1034,8 +1034,8 @@ public class JadxAIMCP implements JadxPlugin {
                     return;
                 }
             }
-            ctx.status(404).json(Map.of("error", "Class not found"));
-            logger.error("JADX AI MCP Error: Class not found.");
+            ctx.status(404).json(Map.of("error", "Class " + className + " not  found."));
+            logger.error("JADX AI MCP Error: Class " + className + " not  found.");
         } catch (Exception e) {
             logger.error("JADX AI MCP Error: " + e.getMessage(), e);
             ctx.status(500).json(Map.of("error", "Internal error rename Class: " + e.getMessage()));
@@ -1129,8 +1129,8 @@ public class JadxAIMCP implements JadxPlugin {
                     }
                 }
             }
-            ctx.status(404).json(Map.of("error", "Class not found"));
-            logger.error("JADX AI MCP Error: Class not found.");
+            ctx.status(404).json(Map.of("error", "Class " + className + " not  found."));
+            logger.error("JADX AI MCP Error: Class " + className + " not  found.");
         } catch (Exception e) {
             logger.error("JADX AI MCP Error: " + e.getMessage(), e);
             ctx.status(500).json(Map.of("error", "Internal error rename field: " + e.getMessage()));
@@ -1159,8 +1159,8 @@ public class JadxAIMCP implements JadxPlugin {
                     return;
                 }
             }
-            ctx.status(404).json(Map.of("error", "Class not found."));
-            logger.error("JADX AI MCP Error: Class not found.");
+            ctx.status(404).json(Map.of("error", "Class " + className + " not  found."));
+            logger.error("JADX AI MCP Error: Class " + className + " not  found.");
         } catch (Exception e) {
             logger.error("JADX AI MCP Error: " + e.getMessage(), e);
             ctx.status(500).json(Map.of("error", "Internal error retrieving class source: " + e.getMessage()));

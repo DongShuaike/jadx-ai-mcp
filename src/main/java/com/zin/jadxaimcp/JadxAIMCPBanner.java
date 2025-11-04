@@ -1,4 +1,4 @@
-package jadx.gui.plugins;
+package com.zin.jadxaimcp;
 
 public class JadxAIMCPBanner {
     public static final String banner = 
