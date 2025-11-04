@@ -30,6 +30,13 @@ import jadx.gui.JadxWrapper;
 import jadx.gui.ui.MainWindow;
 import jadx.gui.settings.JadxSettings;
 
+import jadx.gui.ui.panel.JDebuggerPanel;  
+import jadx.gui.ui.panel.IDebugController; 
+//import jadx.gui.device.debugger.DebugController;
+//import jadx.gui.ui.codearea.SmaliArea;
+//import jadx.gui.utils.JumpPosition;
+//import jadx.gui.treemodel.JClass;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -242,6 +249,8 @@ public class JadxAIMCP implements JadxPlugin {
             app.get("/rename-method", this::handleRenameMethod);
             app.get("/rename-field", this::handleRenameField);
             app.get("/health", this::handleHealth);
+
+            app.get("/debug/stack-frames", this::handleGetStackFrames);
 
             logger.info(JadxAIMCPBanner.banner);
             logger.info(
@@ -1492,6 +1501,64 @@ private void handleStrings(Context ctx) {
         } catch (Exception e) {
             logger.error("JADX AI MCP Error: " + e.getMessage(), e);
             ctx.status(500).json(Map.of("error", "Internal error while retrieving resource file: " + e.getMessage()));
+        }
+    }
+
+
+    // ----------------------------- MCP TOOLS FOR JADX DEBUGGER -----------------------------------------------//
+    /**
+     * Get stack frames from JList UI component
+     * Uses DefaultListModel API
+     */
+    private void handleGetStackFrames(Context ctx) {
+        try {
+            JDebuggerPanel debuggerPanel = mainWindow.getDebuggerPanel();
+            if (debuggerPanel == null) {
+                ctx.status(400).json(Map.of("error", "Debugger panel not initialized"));
+                return;
+            }
+            
+            IDebugController controller = debuggerPanel.getDbgController();
+            if (controller == null || !controller.isDebugging()) {
+                ctx.status(400).json(Map.of("error", "Debugger not attached"));
+                return;
+            }
+            
+            if (!controller.isSuspended()) {
+                ctx.status(400).json(Map.of("error", "Process not suspended. Stack frames only available when paused."));
+                return;
+            }
+            
+            try {
+                // Access stackFrameList through reflection
+                java.lang.reflect.Field stackField = JDebuggerPanel.class.getDeclaredField("stackFrameList");
+                stackField.setAccessible(true);
+                @SuppressWarnings("unchecked")
+                JList<JDebuggerPanel.IListElement> stackFrameList = (JList<JDebuggerPanel.IListElement>) stackField.get(debuggerPanel);
+                
+                // Get the list model
+                DefaultListModel<JDebuggerPanel.IListElement> model = 
+                    (DefaultListModel<JDebuggerPanel.IListElement>) stackFrameList.getModel();
+                
+                List<String> frames = new ArrayList<>();
+                
+                // Iterate through all elements in the list
+                for (int i = 0; i < model.getSize(); i++) {
+                    JDebuggerPanel.IListElement element = model.getElementAt(i);
+                    frames.add(element.toString());
+                }
+                
+                Map<String, Object> result = new HashMap<>();
+                result.put("stackFrames", frames);
+                result.put("count", frames.size());
+                
+                ctx.json(result);
+            } catch (NoSuchFieldException | IllegalAccessException e) {
+                ctx.status(500).json(Map.of("error", "Failed to access stack frame list: " + e.getMessage()));
+            }
+        } catch (Exception e) {
+            logger.error("JADX AI MCP Debug Error: " + e.getMessage(), e);
+            ctx.status(500).json(Map.of("error", "Failed to get stack frames: " + e.getMessage()));
         }
     }
 
