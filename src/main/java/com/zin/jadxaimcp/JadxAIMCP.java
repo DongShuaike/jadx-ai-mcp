@@ -53,7 +53,7 @@ import java.util.prefs.Preferences;
 import java.util.function.Function;
 
 // Importing custom banner string
-import jadx.gui.plugins.JadxAIMCPBanner;
+import com.zin.jadxaimcp.JadxAIMCPBanner;
 
 public class JadxAIMCP implements JadxPlugin {
     private MainWindow mainWindow;
