@@ -5,7 +5,7 @@
 
 // TO DO break down code into smaller files
 
-package jadx.gui.plugins;
+package com.zin.jadxaimcp;
 
 import io.javalin.Javalin;
 import io.javalin.http.Context;
