@@ -224,6 +224,8 @@ The following MCP tools are available:
 
     "What libraries or SDKs does this class appear to be part of?"
 
+    "Tell me which classes contains code related to 'encryption'?"
+
 📦 Static Analysis
 
     "List all network-related API calls in this class."
@@ -330,23 +332,7 @@ uv pip install httpx fastmcp
 # The setup for jadx-ai-mcp and jadx_mcp_server is done.
 ```
 
-## 2. Running on Local LLM Using Ollama and Zin MCP Client - Recommended
-
-<div align="center">
-    <a href="https://github.com/zinja-coder/zin-mcp-client">
-    <img alt="zin-mcp-client" height="360px" widht="480px" src="https://github.com/user-attachments/assets/0e8e0ecd-0520-422e-a007-03dc62c4118e">
-    </a>
-</div>
-
-⚡ Lightweight, Fast, Simple, CLI-Based MCP Client for STDIO MCP Servers, to fill the gap and provide bridge between your local LLMs running Ollama and MCP Servers.
-
-Check Now: https://github.com/zinja-coder/zin-mcp-client
-
-Demo: **Perform Code Review to Find Vulnerabilities locally**
-
-https://github.com/user-attachments/assets/4cd26715-b5e6-4b4b-95e4-054de6789f42
-
-## 🤖 3. Use Claude Desktop
+## 🤖 2. Use Claude Desktop
 
 Make sure Claude Desktop is running with MCP enabled.
 
@@ -396,7 +382,7 @@ uv tool install git+https://github.com/zinja-coder/jadx-mcp-server
 
 and then you can just provide `jadx_mcp_server` in `command` section of mcp configuration.
 
-## 4. Use Cherry Studio
+## 3. Use Cherry Studio
 
 If you want to configure the MCP tool in Cherry Studio, you can refer to the following configuration.
 - Type: stdio
@@ -411,13 +397,13 @@ jadx_mcp_server.py
 - `path/to/jadx-mcp-server` with the absolute path to where you cloned this
 repository
 
-## 5. Using LMStudio
+## 4. Using LMStudio
 
 You can also use JADX AI MCP Server with LM Studio by configuring it's mcp.json file. Here's the video guide.
 
 https://github.com/user-attachments/assets/b4a6b280-5aa9-4e76-ac72-a0abec73b809
 
-## 6. Running in HTTP Stream Mode
+## 5. Running in HTTP Stream Mode
 
 You can also use Jadx in HTTP Stream Mode using `--http` option with `jadx_mcp_server.py` as shown in following:
 
@@ -429,7 +415,7 @@ OR
 uv run jadx_mcp_server.py --http --port 9999
 ```
 
-## 7. Custom port configuration for JADX AI MCP Plugin
+## 6. Custom port configuration for JADX AI MCP Plugin
 
 <img width="800" height="335" alt="image" src="https://github.com/user-attachments/assets/6243adc5-5be4-4e2d-aa16-bdaf78a28e36" />
 
