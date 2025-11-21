@@ -236,6 +236,7 @@ public class JadxAIMCP implements JadxPlugin {
             app.get("/selected-text", this::handleSelectedText);
             app.get("/method-by-name", this::handleMethodByName);
             app.get("/class-source", this::handleClassSource);
+            app.get("/search-classes-by-keyword", this::handleSearchClassesByKeyword);
             app.get("/search-method", this::handleSearchMethod);
             app.get("/methods-of-class", this::handleMethodsOfClass);
             app.get("/fields-of-class", this::handleFieldsOfClass);
@@ -940,6 +941,55 @@ public class JadxAIMCP implements JadxPlugin {
         } catch (Exception e) {
             logger.error("JADX AI MCP Error: " + e.getMessage(), e);
             ctx.status(500).json(Map.of("error", "Internal error during method search: " + e.getMessage()));
+        }
+    }
+
+    // method to handle /search-classes-by-keyword
+    private void handleSearchClassesByKeyword(Context ctx) {
+        String searchTerm = ctx.queryParam("search_term");
+
+        if (searchTerm == null || searchTerm.isEmpty()) {
+            logger.error("JADX AI MCP Error: Missing 'search_term' parameter.");
+            ctx.status(400).json(Map.of("error", "Missing 'search_term' parameter"));
+            return;
+        }
+
+        try {
+            JadxWrapper wrapper = mainWindow.getWrapper();
+            List<JavaClass> allClasses = wrapper.getIncludedClassesWithInners();
+            
+            String term = searchTerm.toLowerCase();
+
+            // Use parallel stream for faster processing of code search
+            List<JavaClass> matchingClasses = allClasses.parallelStream()
+                .filter(cls -> {
+                    try {
+                        // Check if class code contains the search term
+                        // This implicitly covers class name as well since class definition is part of the code
+                        String code = cls.getCode();
+                        return code != null && code.toLowerCase().contains(term);
+                    } catch (Exception e) {
+                        logger.warn("Failed to decompile class " + cls.getFullName() + " for search: " + e.getMessage());
+                        return false;
+                    }
+                })
+                .collect(Collectors.toList());
+
+            Map<String, Object> result = PaginationUtils.handlePagination(
+                    ctx,
+                    matchingClasses,
+                    "class-list",
+                    "classes",
+                    cls -> cls.getFullName());
+
+            ctx.json(result);
+
+        } catch (PaginationUtils.PaginationException e) {
+            logger.error("JADX AI MCP Pagination Error: " + e.getMessage());
+            ctx.status(400).json(Map.of("error", "Pagination error: " + e.getMessage()));
+        } catch (Exception e) {
+            logger.error("JADX AI MCP Error: " + e.getMessage(), e);
+            ctx.status(500).json(Map.of("error", "Internal error during search: " + e.getMessage()));
         }
     }
 
