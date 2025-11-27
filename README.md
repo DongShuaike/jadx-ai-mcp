@@ -188,6 +188,7 @@ The following MCP tools are available:
 - `rename_class()` : Renames the class name
 - `rename_method()` : Renames the method
 - `rename_field()` : Renames the field
+- `rename_package()` : Renames whole package
 - `debug_get_stack_frames()` : Get the stack frames from jadx debugger
 - `debug_get_threads()` : Get the insights of threads from jadx debugger
 - `debug_get_variables()` : Get the variables from jadx debugger
