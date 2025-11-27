@@ -30,8 +30,8 @@ import jadx.gui.JadxWrapper;
 import jadx.gui.ui.MainWindow;
 import jadx.gui.settings.JadxSettings;
 
-import jadx.gui.ui.panel.JDebuggerPanel;  
-import jadx.gui.ui.panel.IDebugController; 
+import jadx.gui.ui.panel.JDebuggerPanel;
+import jadx.gui.ui.panel.IDebugController;
 //import jadx.gui.device.debugger.DebugController;
 //import jadx.gui.ui.codearea.SmaliArea;
 //import jadx.gui.utils.JumpPosition;
@@ -251,6 +251,7 @@ public class JadxAIMCP implements JadxPlugin {
             app.get("/rename-class", this::handleRenameClass);
             app.get("/rename-method", this::handleRenameMethod);
             app.get("/rename-field", this::handleRenameField);
+            app.get("/rename-package", this::handleRenamePackage);
             app.get("/health", this::handleHealth);
 
             app.get("/debug/stack-frames", this::handleGetStackFrames);
@@ -725,7 +726,8 @@ public class JadxAIMCP implements JadxPlugin {
         }
     }
 
-    // -------------------------- various request handlers -------------------------- //
+    // -------------------------- various request handlers
+    // -------------------------- //
 
     // method to handle /health request which is used to ensure plugin and mcp
     // server are properly started //
@@ -817,8 +819,10 @@ public class JadxAIMCP implements JadxPlugin {
             return;
         }
 
-        // Removing this line to solve issue #37 as raised and contributed by github@ljt270864457
-        // This solves following bug -> Bug: Inner classes with $ symbol cannot be retrieved via /class-source endpoint
+        // Removing this line to solve issue #37 as raised and contributed by
+        // github@ljt270864457
+        // This solves following bug -> Bug: Inner classes with $ symbol cannot be
+        // retrieved via /class-source endpoint
         // className = className.replace('$', '.');
 
         try {
@@ -898,8 +902,10 @@ public class JadxAIMCP implements JadxPlugin {
             return;
         }
 
-        // Removing this line to solve issue #37 as raised and contributed by github@ljt270864457
-        // This solves following bug -> Bug: Inner classes with $ symbol cannot be retrieved via /class-source endpoint
+        // Removing this line to solve issue #37 as raised and contributed by
+        // github@ljt270864457
+        // This solves following bug -> Bug: Inner classes with $ symbol cannot be
+        // retrieved via /class-source endpoint
         // className = className.replace('$', '.');
 
         try {
@@ -957,23 +963,25 @@ public class JadxAIMCP implements JadxPlugin {
         try {
             JadxWrapper wrapper = mainWindow.getWrapper();
             List<JavaClass> allClasses = wrapper.getIncludedClassesWithInners();
-            
+
             String term = searchTerm.toLowerCase();
 
             // Use parallel stream for faster processing of code search
             List<JavaClass> matchingClasses = allClasses.parallelStream()
-                .filter(cls -> {
-                    try {
-                        // Check if class code contains the search term
-                        // This implicitly covers class name as well since class definition is part of the code
-                        String code = cls.getCode();
-                        return code != null && code.toLowerCase().contains(term);
-                    } catch (Exception e) {
-                        logger.warn("Failed to decompile class " + cls.getFullName() + " for search: " + e.getMessage());
-                        return false;
-                    }
-                })
-                .collect(Collectors.toList());
+                    .filter(cls -> {
+                        try {
+                            // Check if class code contains the search term
+                            // This implicitly covers class name as well since class definition is part of
+                            // the code
+                            String code = cls.getCode();
+                            return code != null && code.toLowerCase().contains(term);
+                        } catch (Exception e) {
+                            logger.warn("Failed to decompile class " + cls.getFullName() + " for search: "
+                                    + e.getMessage());
+                            return false;
+                        }
+                    })
+                    .collect(Collectors.toList());
 
             Map<String, Object> result = PaginationUtils.handlePagination(
                     ctx,
@@ -1002,9 +1010,11 @@ public class JadxAIMCP implements JadxPlugin {
             ctx.status(400).json(Map.of("error", "Missing required parameter 'class'"));
             return;
         }
-        
-        // Removing this line to solve issue #37 as raised and contributed by github@ljt270864457
-        // This solves following bug -> Bug: Inner classes with $ symbol cannot be retrieved via /class-source endpoint
+
+        // Removing this line to solve issue #37 as raised and contributed by
+        // github@ljt270864457
+        // This solves following bug -> Bug: Inner classes with $ symbol cannot be
+        // retrieved via /class-source endpoint
         // className = className.replace('$', '.');
 
         try {
@@ -1013,9 +1023,9 @@ public class JadxAIMCP implements JadxPlugin {
                 if (cls.getFullName().equals(className)) {
                     List<String> methods = new ArrayList<>();
                     for (JavaMethod method : cls.getMethods()) {
-                        String fullMethodName = cls.getFullName()+"."+method.getName();
+                        String fullMethodName = cls.getFullName() + "." + method.getName();
                         String methodData = method.getAccessFlags() + " " + method.getReturnType() + " " +
-                                method.getName() +" "+ method.getMethodNode()+" " + fullMethodName;
+                                method.getName() + " " + method.getMethodNode() + " " + fullMethodName;
                         methods.add(methodData);
                     }
                     ctx.result(String.join("\n", methods));
@@ -1039,9 +1049,11 @@ public class JadxAIMCP implements JadxPlugin {
             ctx.status(400).json(Map.of("error", "Missing required parameter 'class'"));
             return;
         }
-        
-        // Removing this line to solve issue #37 as raised and contributed by github@ljt270864457
-        // This solves following bug -> Bug: Inner classes with $ symbol cannot be retrieved via /class-source endpoint
+
+        // Removing this line to solve issue #37 as raised and contributed by
+        // github@ljt270864457
+        // This solves following bug -> Bug: Inner classes with $ symbol cannot be
+        // retrieved via /class-source endpoint
         // className = className.replace('$', '.');
 
         try {
@@ -1076,9 +1088,11 @@ public class JadxAIMCP implements JadxPlugin {
             ctx.status(400).json(Map.of("error", "Missing required parameter 'class' or 'newName'"));
             return;
         }
-        
-        // Removing this line to solve issue #37 as raised and contributed by github@ljt270864457
-        // This solves following bug -> Bug: Inner classes with $ symbol cannot be retrieved via /class-source endpoint
+
+        // Removing this line to solve issue #37 as raised and contributed by
+        // github@ljt270864457
+        // This solves following bug -> Bug: Inner classes with $ symbol cannot be
+        // retrieved via /class-source endpoint
         // className = className.replace('$', '.');
 
         try {
@@ -1117,7 +1131,7 @@ public class JadxAIMCP implements JadxPlugin {
         }
         // remove useless string
         int index = methodName.indexOf('(');
-        if(index != -1){
+        if (index != -1) {
             methodName = methodName.substring(0, index);
         }
         try {
@@ -1130,7 +1144,7 @@ public class JadxAIMCP implements JadxPlugin {
             for (JavaClass cls : wrapper.getIncludedClassesWithInners()) {
                 String className = cls.getFullName().replace('$', '.');
                 for (JavaMethod method : cls.getMethods()) {
-                    String fullMethodName = className+"."+method.getName();
+                    String fullMethodName = className + "." + method.getName();
                     if (fullMethodName.equalsIgnoreCase(methodName)) {
                         ICodeNodeRef nodeRef = method.getCodeNodeRef();
                         NodeRenamedByUser event = new NodeRenamedByUser(nodeRef, method.getName(), newName);
@@ -1166,9 +1180,11 @@ public class JadxAIMCP implements JadxPlugin {
             ctx.status(400).json(Map.of("error", "Missing required parameter 'class' or 'field'"));
             return;
         }
-        
-        // Removing this line to solve issue #37 as raised and contributed by github@ljt270864457
-        // This solves following bug -> Bug: Inner classes with $ symbol cannot be retrieved via /class-source endpoint
+
+        // Removing this line to solve issue #37 as raised and contributed by
+        // github@ljt270864457
+        // This solves following bug -> Bug: Inner classes with $ symbol cannot be
+        // retrieved via /class-source endpoint
         // className = className.replace('$', '.');
 
         try {
@@ -1200,6 +1216,85 @@ public class JadxAIMCP implements JadxPlugin {
         }
     }
 
+    // method to handle /rename-package
+    private void handleRenamePackage(Context ctx) {
+    String oldPackageName = ctx.queryParam("oldPackage");
+    String newPackageName = ctx.queryParam("newPackage");
+
+    if (oldPackageName == null || oldPackageName.isEmpty() ||
+        newPackageName == null || newPackageName.isEmpty()) {
+        logger.error("JADX AI MCP Error: Missing 'oldPackage' or 'newPackage' parameter.");
+        ctx.status(400).json(Map.of("error", "Missing required parameter 'oldPackage' or 'newPackage'"));
+        return;
+    }
+
+    try {
+        JadxWrapper wrapper = mainWindow.getWrapper();
+        List<JavaClass> classesToRename = new ArrayList<>();
+        int renamedCount = 0;
+        List<String> errors = new ArrayList<>();
+
+        // Find all classes in the old package
+        for (JavaClass cls : wrapper.getIncludedClassesWithInners()) {
+            String fullName = cls.getFullName();
+            // Check if class belongs to the package or its subpackages
+            if (fullName.equals(oldPackageName) ||
+                fullName.startsWith(oldPackageName + ".")) {
+                classesToRename.add(cls);
+            }
+        }
+
+        if (classesToRename.isEmpty()) {
+            ctx.status(404).json(Map.of("error", "No classes found in package: " + oldPackageName));
+            logger.error("JADX AI MCP Error: No classes found in package: " + oldPackageName);
+            return;
+        }
+
+        // Rename each class
+        for (JavaClass cls : classesToRename) {
+            try {
+                String oldFullName = cls.getFullName();
+                String relativePath = oldFullName.substring(oldPackageName.length());
+                String newFullName = newPackageName + relativePath;
+
+                ICodeNodeRef nodeRef = cls.getCodeNodeRef();
+                // pass the FULL new name including package path
+                NodeRenamedByUser event = new NodeRenamedByUser(nodeRef, cls.getName(), newFullName);
+                event.setRenameNode(cls.getClassNode());
+                // Set to false, providing a valid new name, not resetting
+                event.setResetName(false);
+                
+                mainWindow.events().send(event);
+                renamedCount++;
+                logger.info("Renamed class: " + oldFullName + " -> " + newFullName);
+            } catch (Exception e) {
+                String error = "Failed to rename " + cls.getFullName() + ": " + e.getMessage();
+                errors.add(error);
+                logger.error("JADX AI MCP Error: " + error, e);
+            }
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("oldPackage", oldPackageName);
+        result.put("newPackage", newPackageName);
+        result.put("totalClasses", classesToRename.size());
+        result.put("renamedCount", renamedCount);
+        result.put("status", renamedCount == classesToRename.size() ? "success" : "partial");
+        
+        if (!errors.isEmpty()) {
+            result.put("errors", errors);
+        }
+
+        ctx.json(result);
+        logger.info("Package rename complete: " + oldPackageName + " -> " + newPackageName +
+            " (" + renamedCount + "/" + classesToRename.size() + " classes)");
+    } catch (Exception e) {
+        logger.error("JADX AI MCP Error: " + e.getMessage(), e);
+        ctx.status(500).json(Map.of("error", "Internal error renaming package: " + e.getMessage()));
+    }
+}
+
+
     // method to handle /smali-of-class call
     private void handleSmaliOfClass(Context ctx) {
         String className = ctx.queryParam("class");
@@ -1209,9 +1304,11 @@ public class JadxAIMCP implements JadxPlugin {
             ctx.status(400).json(Map.of("error", "Missing 'class' parameter."));
             return;
         }
-        
-        // Removing this line to solve issue #37 as raised and contributed by github@ljt270864457
-        // This solves following bug -> Bug: Inner classes with $ symbol cannot be retrieved via /class-source endpoint
+
+        // Removing this line to solve issue #37 as raised and contributed by
+        // github@ljt270864457
+        // This solves following bug -> Bug: Inner classes with $ symbol cannot be
+        // retrieved via /class-source endpoint
         // className = className.replace('$', '.');
 
         try {
@@ -1408,66 +1505,66 @@ public class JadxAIMCP implements JadxPlugin {
         }
     }
 
-// method to handle /strings
-private void handleStrings(Context ctx) {
-    try {
-        JadxWrapper wrapper = mainWindow.getWrapper();
-        List<ResourceFile> resourceFiles = wrapper.getResources();
+    // method to handle /strings
+    private void handleStrings(Context ctx) {
+        try {
+            JadxWrapper wrapper = mainWindow.getWrapper();
+            List<ResourceFile> resourceFiles = wrapper.getResources();
 
-        // Explicit element type
-        List<Map<String, Object>> allStringEntries = new ArrayList<>();
+            // Explicit element type
+            List<Map<String, Object>> allStringEntries = new ArrayList<>();
 
-        for (ResourceFile resFile : resourceFiles) {
-            try {
-                if ("resources.arsc".equals(resFile.getDeobfName())) {
-                    ResContainer container = resFile.loadContent();
-                    List<ResContainer> subFiles = container.getSubFiles();
-                    for (ResContainer file : subFiles) {
-                        if ("res/values/strings.xml".equals(file.getFileName())) {
-                            Map<String, Object> entry = new HashMap<>();
-                            entry.put("file", file.getFileName());
-                            entry.put("content", file.getText().getCodeStr());
-                            allStringEntries.add(entry);
+            for (ResourceFile resFile : resourceFiles) {
+                try {
+                    if ("resources.arsc".equals(resFile.getDeobfName())) {
+                        ResContainer container = resFile.loadContent();
+                        List<ResContainer> subFiles = container.getSubFiles();
+                        for (ResContainer file : subFiles) {
+                            if ("res/values/strings.xml".equals(file.getFileName())) {
+                                Map<String, Object> entry = new HashMap<>();
+                                entry.put("file", file.getFileName());
+                                entry.put("content", file.getText().getCodeStr());
+                                allStringEntries.add(entry);
+                            }
                         }
+                    } else if ("res/values/strings.xml".equals(resFile.getDeobfName())) {
+                        ResContainer container = resFile.loadContent();
+                        Map<String, Object> entry = new HashMap<>();
+                        entry.put("file", resFile.getDeobfName());
+                        entry.put("content", container.getText().getCodeStr());
+                        allStringEntries.add(entry);
                     }
-                } else if ("res/values/strings.xml".equals(resFile.getDeobfName())) {
-                    ResContainer container = resFile.loadContent();
-                    Map<String, Object> entry = new HashMap<>();
-                    entry.put("file", resFile.getDeobfName());
-                    entry.put("content", container.getText().getCodeStr());
-                    allStringEntries.add(entry);
+                } catch (Exception e) {
+                    logger.error("JADX AI MCP Error: {}", e.getMessage(), e);
                 }
-            } catch (Exception e) {
-                logger.error("JADX AI MCP Error: {}", e.getMessage(), e);
             }
-        }
 
-        if (allStringEntries.isEmpty()) {
-            ctx.status(404).json(Map.of("error", "No strings.xml resource found"));
-            return;
-        }
-
-        // Use the generic pagination with an explicit transformer signature
-        Map<String, Object> result = PaginationUtils.handlePagination(
-            ctx,
-            allStringEntries,
-            "resource/strings-xml",
-            "strings",
-            (java.util.function.Function<Map<String, Object>, Object>) item -> {
-                // Return the same map as Object to satisfy Function<T, Object>
-                return item;
+            if (allStringEntries.isEmpty()) {
+                ctx.status(404).json(Map.of("error", "No strings.xml resource found"));
+                return;
             }
-        );
 
-        ctx.json(result);
-    } catch (JadxAIMCP.PaginationUtils.PaginationException e) {
-        logger.error("JADX AI MCP Pagination Error: {}", e.getMessage());
-        ctx.status(400).json(Map.of("error", "Pagination error: " + e.getMessage()));
-    } catch (Exception e) {
-        logger.error("JADX AI MCP Error: {}", e.getMessage(), e);
-        ctx.status(500).json(Map.of("error", "Internal error while retrieving strings.xml file: " + e.getMessage()));
+            // Use the generic pagination with an explicit transformer signature
+            Map<String, Object> result = PaginationUtils.handlePagination(
+                    ctx,
+                    allStringEntries,
+                    "resource/strings-xml",
+                    "strings",
+                    (java.util.function.Function<Map<String, Object>, Object>) item -> {
+                        // Return the same map as Object to satisfy Function<T, Object>
+                        return item;
+                    });
+
+            ctx.json(result);
+        } catch (JadxAIMCP.PaginationUtils.PaginationException e) {
+            logger.error("JADX AI MCP Pagination Error: {}", e.getMessage());
+            ctx.status(400).json(Map.of("error", "Pagination error: " + e.getMessage()));
+        } catch (Exception e) {
+            logger.error("JADX AI MCP Error: {}", e.getMessage(), e);
+            ctx.status(500)
+                    .json(Map.of("error", "Internal error while retrieving strings.xml file: " + e.getMessage()));
+        }
     }
-}
 
     // method to handle /list-resource-files-names
     private void handleListAllResourceFilesNames(Context ctx) {
@@ -1558,8 +1655,8 @@ private void handleStrings(Context ctx) {
         }
     }
 
-
-    // ----------------------------- MCP TOOLS FOR JADX DEBUGGER -----------------------------------------------//
+    // ----------------------------- MCP TOOLS FOR JADX DEBUGGER
+    // -----------------------------------------------//
     /**
      * Get stack frames from JList UI component
      * Uses DefaultListModel API
@@ -1571,41 +1668,43 @@ private void handleStrings(Context ctx) {
                 ctx.status(400).json(Map.of("error", "Debugger panel not initialized"));
                 return;
             }
-            
+
             IDebugController controller = debuggerPanel.getDbgController();
             if (controller == null || !controller.isDebugging()) {
                 ctx.status(400).json(Map.of("error", "Debugger not attached"));
                 return;
             }
-            
+
             if (!controller.isSuspended()) {
-                ctx.status(400).json(Map.of("error", "Process not suspended. Stack frames only available when paused."));
+                ctx.status(400)
+                        .json(Map.of("error", "Process not suspended. Stack frames only available when paused."));
                 return;
             }
-            
+
             try {
                 // Access stackFrameList through reflection
                 java.lang.reflect.Field stackField = JDebuggerPanel.class.getDeclaredField("stackFrameList");
                 stackField.setAccessible(true);
                 @SuppressWarnings("unchecked")
-                JList<JDebuggerPanel.IListElement> stackFrameList = (JList<JDebuggerPanel.IListElement>) stackField.get(debuggerPanel);
-                
+                JList<JDebuggerPanel.IListElement> stackFrameList = (JList<JDebuggerPanel.IListElement>) stackField
+                        .get(debuggerPanel);
+
                 // Get the list model
-                DefaultListModel<JDebuggerPanel.IListElement> model = 
-                    (DefaultListModel<JDebuggerPanel.IListElement>) stackFrameList.getModel();
-                
+                DefaultListModel<JDebuggerPanel.IListElement> model = (DefaultListModel<JDebuggerPanel.IListElement>) stackFrameList
+                        .getModel();
+
                 List<String> frames = new ArrayList<>();
-                
+
                 // Iterate through all elements in the list
                 for (int i = 0; i < model.getSize(); i++) {
                     JDebuggerPanel.IListElement element = model.getElementAt(i);
                     frames.add(element.toString());
                 }
-                
+
                 Map<String, Object> result = new HashMap<>();
                 result.put("stackFrames", frames);
                 result.put("count", frames.size());
-                
+
                 ctx.json(result);
             } catch (NoSuchFieldException | IllegalAccessException e) {
                 ctx.status(500).json(Map.of("error", "Failed to access stack frame list: " + e.getMessage()));
@@ -1616,123 +1715,123 @@ private void handleStrings(Context ctx) {
         }
     }
 
-
-/**
- * Get threads from JComboBox UI component
- * Uses DefaultComboBoxModel API
- */
-private void handleGetThreads(Context ctx) {
-    try {
-        JDebuggerPanel debuggerPanel = mainWindow.getDebuggerPanel();
-        if (debuggerPanel == null) {
-            ctx.status(400).json(Map.of("error", "Debugger panel not initialized"));
-            return;
-        }
-        
-        IDebugController controller = debuggerPanel.getDbgController();
-        if (controller == null || !controller.isDebugging()) {
-            ctx.status(400).json(Map.of("error", "Debugger not attached"));
-            return;
-        }
-        
+    /**
+     * Get threads from JComboBox UI component
+     * Uses DefaultComboBoxModel API
+     */
+    private void handleGetThreads(Context ctx) {
         try {
-            // Access threadBox through reflection
-            java.lang.reflect.Field threadField = JDebuggerPanel.class.getDeclaredField("threadBox");
-            threadField.setAccessible(true);
-            @SuppressWarnings("unchecked")
-            JComboBox<JDebuggerPanel.IListElement> threadBox = 
-                (JComboBox<JDebuggerPanel.IListElement>) threadField.get(debuggerPanel);
-            
-            // Get the combo box model
-            DefaultComboBoxModel<JDebuggerPanel.IListElement> model = 
-                (DefaultComboBoxModel<JDebuggerPanel.IListElement>) threadBox.getModel();
-            
-            List<String> threads = new ArrayList<>();
-            String selectedThread = null;
-            
-            // Iterate through all elements in the combo box
-            for (int i = 0; i < model.getSize(); i++) {
-                JDebuggerPanel.IListElement element = model.getElementAt(i);
-                threads.add(element.toString());
+            JDebuggerPanel debuggerPanel = mainWindow.getDebuggerPanel();
+            if (debuggerPanel == null) {
+                ctx.status(400).json(Map.of("error", "Debugger panel not initialized"));
+                return;
             }
-            
-            // Get selected thread
-            Object selected = model.getSelectedItem();
-            if (selected != null) {
-                selectedThread = selected.toString();
-            }
-            
-            Map<String, Object> result = new HashMap<>();
-            result.put("threads", threads);
-            result.put("selectedThread", selectedThread);
-            result.put("count", threads.size());
-            
-            ctx.json(result);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            ctx.status(500).json(Map.of("error", "Failed to access thread box: " + e.getMessage()));
-        }
-    } catch (Exception e) {
-        logger.error("JADX AI MCP Debug Error: " + e.getMessage(), e);
-        ctx.status(500).json(Map.of("error", "Failed to get threads: " + e.getMessage()));
-    }
-}
 
-/**
- * Get all variables (registers and 'this' object fields)
- * Extracts from JTree UI components: regTreeNode and thisTreeNode
- */
-private void handleGetVariables(Context ctx) {
-    try {
-        JDebuggerPanel debuggerPanel = mainWindow.getDebuggerPanel();
-        if (debuggerPanel == null) {
-            ctx.status(400).json(Map.of("error", "Debugger panel not initialized"));
-            return;
+            IDebugController controller = debuggerPanel.getDbgController();
+            if (controller == null || !controller.isDebugging()) {
+                ctx.status(400).json(Map.of("error", "Debugger not attached"));
+                return;
+            }
+
+            try {
+                // Access threadBox through reflection
+                java.lang.reflect.Field threadField = JDebuggerPanel.class.getDeclaredField("threadBox");
+                threadField.setAccessible(true);
+                @SuppressWarnings("unchecked")
+                JComboBox<JDebuggerPanel.IListElement> threadBox = (JComboBox<JDebuggerPanel.IListElement>) threadField
+                        .get(debuggerPanel);
+
+                // Get the combo box model
+                DefaultComboBoxModel<JDebuggerPanel.IListElement> model = (DefaultComboBoxModel<JDebuggerPanel.IListElement>) threadBox
+                        .getModel();
+
+                List<String> threads = new ArrayList<>();
+                String selectedThread = null;
+
+                // Iterate through all elements in the combo box
+                for (int i = 0; i < model.getSize(); i++) {
+                    JDebuggerPanel.IListElement element = model.getElementAt(i);
+                    threads.add(element.toString());
+                }
+
+                // Get selected thread
+                Object selected = model.getSelectedItem();
+                if (selected != null) {
+                    selectedThread = selected.toString();
+                }
+
+                Map<String, Object> result = new HashMap<>();
+                result.put("threads", threads);
+                result.put("selectedThread", selectedThread);
+                result.put("count", threads.size());
+
+                ctx.json(result);
+            } catch (NoSuchFieldException | IllegalAccessException e) {
+                ctx.status(500).json(Map.of("error", "Failed to access thread box: " + e.getMessage()));
+            }
+        } catch (Exception e) {
+            logger.error("JADX AI MCP Debug Error: " + e.getMessage(), e);
+            ctx.status(500).json(Map.of("error", "Failed to get threads: " + e.getMessage()));
         }
-        
-        IDebugController controller = debuggerPanel.getDbgController();
-        if (controller == null || !controller.isDebugging()) {
-            ctx.status(400).json(Map.of("error", "Debugger not attached"));
-            return;
-        }
-        
-        if (!controller.isSuspended()) {
-            ctx.status(400).json(Map.of("error", "Process not suspended. Variables only available when paused."));
-            return;
-        }
-        
-        Map<String, Object> variables = new HashMap<>();
-        
-        // Access the variable tree through reflection since fields are private
+    }
+
+    /**
+     * Get all variables (registers and 'this' object fields)
+     * Extracts from JTree UI components: regTreeNode and thisTreeNode
+     */
+    private void handleGetVariables(Context ctx) {
         try {
-            // Get regTreeNode (registers/local variables)
-            java.lang.reflect.Field regField = JDebuggerPanel.class.getDeclaredField("regTreeNode");
-            regField.setAccessible(true);
-            DefaultMutableTreeNode regTreeNode = (DefaultMutableTreeNode) regField.get(debuggerPanel);
-            
-            // Get thisTreeNode (object fields)
-            java.lang.reflect.Field thisField = JDebuggerPanel.class.getDeclaredField("thisTreeNode");
-            thisField.setAccessible(true);
-            DefaultMutableTreeNode thisTreeNode = (DefaultMutableTreeNode) thisField.get(debuggerPanel);
-            
-            // Extract register variables
-            List<Map<String, Object>> registers = extractTreeNodeData(regTreeNode);
-            variables.put("registers", registers);
-            
-            // Extract 'this' object fields
-            List<Map<String, Object>> thisFields = extractTreeNodeData(thisTreeNode);
-            variables.put("thisObject", thisFields);
-            
-            ctx.json(variables);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            ctx.status(500).json(Map.of("error", "Failed to access tree nodes: " + e.getMessage()));
-        }
-    } catch (Exception e) {
-        logger.error("JADX AI MCP Debug Error: " + e.getMessage(), e);
-        ctx.status(500).json(Map.of("error", "Failed to get variables: " + e.getMessage()));
-    }
-}
+            JDebuggerPanel debuggerPanel = mainWindow.getDebuggerPanel();
+            if (debuggerPanel == null) {
+                ctx.status(400).json(Map.of("error", "Debugger panel not initialized"));
+                return;
+            }
 
-    // -------------------------- helper methods to assist the request handler methods -------------------------- //
+            IDebugController controller = debuggerPanel.getDbgController();
+            if (controller == null || !controller.isDebugging()) {
+                ctx.status(400).json(Map.of("error", "Debugger not attached"));
+                return;
+            }
+
+            if (!controller.isSuspended()) {
+                ctx.status(400).json(Map.of("error", "Process not suspended. Variables only available when paused."));
+                return;
+            }
+
+            Map<String, Object> variables = new HashMap<>();
+
+            // Access the variable tree through reflection since fields are private
+            try {
+                // Get regTreeNode (registers/local variables)
+                java.lang.reflect.Field regField = JDebuggerPanel.class.getDeclaredField("regTreeNode");
+                regField.setAccessible(true);
+                DefaultMutableTreeNode regTreeNode = (DefaultMutableTreeNode) regField.get(debuggerPanel);
+
+                // Get thisTreeNode (object fields)
+                java.lang.reflect.Field thisField = JDebuggerPanel.class.getDeclaredField("thisTreeNode");
+                thisField.setAccessible(true);
+                DefaultMutableTreeNode thisTreeNode = (DefaultMutableTreeNode) thisField.get(debuggerPanel);
+
+                // Extract register variables
+                List<Map<String, Object>> registers = extractTreeNodeData(regTreeNode);
+                variables.put("registers", registers);
+
+                // Extract 'this' object fields
+                List<Map<String, Object>> thisFields = extractTreeNodeData(thisTreeNode);
+                variables.put("thisObject", thisFields);
+
+                ctx.json(variables);
+            } catch (NoSuchFieldException | IllegalAccessException e) {
+                ctx.status(500).json(Map.of("error", "Failed to access tree nodes: " + e.getMessage()));
+            }
+        } catch (Exception e) {
+            logger.error("JADX AI MCP Debug Error: " + e.getMessage(), e);
+            ctx.status(500).json(Map.of("error", "Failed to get variables: " + e.getMessage()));
+        }
+    }
+
+    // -------------------------- helper methods to assist the request handler
+    // methods -------------------------- //
     private String getSelectedTabTitle() {
         JTabbedPane tabs = mainWindow.getTabbedPane();
         int index = tabs.getSelectedIndex();
@@ -1764,30 +1863,30 @@ private void handleGetVariables(Context ctx) {
      */
     private List<Map<String, Object>> extractTreeNodeData(DefaultMutableTreeNode node) {
         List<Map<String, Object>> result = new ArrayList<>();
-        
+
         // Iterate through all children of the node
         for (int i = 0; i < node.getChildCount(); i++) {
             TreeNode childNode = node.getChildAt(i);
-            
+
             if (childNode instanceof JDebuggerPanel.ValueTreeNode) {
                 JDebuggerPanel.ValueTreeNode valueNode = (JDebuggerPanel.ValueTreeNode) childNode;
-                
+
                 Map<String, Object> varInfo = new HashMap<>();
                 varInfo.put("name", valueNode.getName());
                 varInfo.put("value", valueNode.getValue());
                 varInfo.put("type", valueNode.getType());
                 varInfo.put("typeId", valueNode.getTypeID());
                 varInfo.put("updated", valueNode.isUpdated());
-                
+
                 // Recursively extract children if any
                 if (valueNode.getChildCount() > 0) {
                     varInfo.put("children", extractTreeNodeData(valueNode));
                 }
-                
+
                 result.add(varInfo);
             }
         }
-        
+
         return result;
     }
 
