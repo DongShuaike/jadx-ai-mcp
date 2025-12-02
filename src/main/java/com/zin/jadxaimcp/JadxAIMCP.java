@@ -21,6 +21,9 @@ import jadx.api.plugins.JadxPluginInfo;
 import jadx.api.plugins.JadxPluginInfoBuilder;
 import jadx.api.plugins.events.types.NodeRenamedByUser;
 import jadx.api.security.IJadxSecurity;
+import jadx.core.dex.nodes.ClassNode;
+import jadx.core.dex.nodes.MethodNode;
+import jadx.core.dex.nodes.FieldNode;
 import jadx.core.utils.android.AndroidManifestParser;
 import jadx.core.utils.android.AppAttribute;
 import jadx.core.utils.android.ApplicationParams;
@@ -257,6 +260,10 @@ public class JadxAIMCP implements JadxPlugin {
             app.get("/debug/stack-frames", this::handleGetStackFrames);
             app.get("/debug/variables", this::handleGetVariables);
             app.get("/debug/threads", this::handleGetThreads);
+
+            app.get("/xrefs-to-class", this::handleXrefsToClass);
+            app.get("/xrefs-to-method", this::handleXrefsToMethod);
+            app.get("/xrefs-to-field", this::handleXrefsToField);
 
             logger.info(JadxAIMCPBanner.banner);
             logger.info(
@@ -1218,82 +1225,81 @@ public class JadxAIMCP implements JadxPlugin {
 
     // method to handle /rename-package
     private void handleRenamePackage(Context ctx) {
-    String oldPackageName = ctx.queryParam("oldPackage");
-    String newPackageName = ctx.queryParam("newPackage");
+        String oldPackageName = ctx.queryParam("oldPackage");
+        String newPackageName = ctx.queryParam("newPackage");
 
-    if (oldPackageName == null || oldPackageName.isEmpty() ||
-        newPackageName == null || newPackageName.isEmpty()) {
-        logger.error("JADX AI MCP Error: Missing 'oldPackage' or 'newPackage' parameter.");
-        ctx.status(400).json(Map.of("error", "Missing required parameter 'oldPackage' or 'newPackage'"));
-        return;
-    }
-
-    try {
-        JadxWrapper wrapper = mainWindow.getWrapper();
-        List<JavaClass> classesToRename = new ArrayList<>();
-        int renamedCount = 0;
-        List<String> errors = new ArrayList<>();
-
-        // Find all classes in the old package
-        for (JavaClass cls : wrapper.getIncludedClassesWithInners()) {
-            String fullName = cls.getFullName();
-            // Check if class belongs to the package or its subpackages
-            if (fullName.equals(oldPackageName) ||
-                fullName.startsWith(oldPackageName + ".")) {
-                classesToRename.add(cls);
-            }
-        }
-
-        if (classesToRename.isEmpty()) {
-            ctx.status(404).json(Map.of("error", "No classes found in package: " + oldPackageName));
-            logger.error("JADX AI MCP Error: No classes found in package: " + oldPackageName);
+        if (oldPackageName == null || oldPackageName.isEmpty() ||
+                newPackageName == null || newPackageName.isEmpty()) {
+            logger.error("JADX AI MCP Error: Missing 'oldPackage' or 'newPackage' parameter.");
+            ctx.status(400).json(Map.of("error", "Missing required parameter 'oldPackage' or 'newPackage'"));
             return;
         }
 
-        // Rename each class
-        for (JavaClass cls : classesToRename) {
-            try {
-                String oldFullName = cls.getFullName();
-                String relativePath = oldFullName.substring(oldPackageName.length());
-                String newFullName = newPackageName + relativePath;
+        try {
+            JadxWrapper wrapper = mainWindow.getWrapper();
+            List<JavaClass> classesToRename = new ArrayList<>();
+            int renamedCount = 0;
+            List<String> errors = new ArrayList<>();
 
-                ICodeNodeRef nodeRef = cls.getCodeNodeRef();
-                // pass the FULL new name including package path
-                NodeRenamedByUser event = new NodeRenamedByUser(nodeRef, cls.getName(), newFullName);
-                event.setRenameNode(cls.getClassNode());
-                // Set to false, providing a valid new name, not resetting
-                event.setResetName(false);
-                
-                mainWindow.events().send(event);
-                renamedCount++;
-                logger.info("Renamed class: " + oldFullName + " -> " + newFullName);
-            } catch (Exception e) {
-                String error = "Failed to rename " + cls.getFullName() + ": " + e.getMessage();
-                errors.add(error);
-                logger.error("JADX AI MCP Error: " + error, e);
+            // Find all classes in the old package
+            for (JavaClass cls : wrapper.getIncludedClassesWithInners()) {
+                String fullName = cls.getFullName();
+                // Check if class belongs to the package or its subpackages
+                if (fullName.equals(oldPackageName) ||
+                        fullName.startsWith(oldPackageName + ".")) {
+                    classesToRename.add(cls);
+                }
             }
-        }
 
-        Map<String, Object> result = new HashMap<>();
-        result.put("oldPackage", oldPackageName);
-        result.put("newPackage", newPackageName);
-        result.put("totalClasses", classesToRename.size());
-        result.put("renamedCount", renamedCount);
-        result.put("status", renamedCount == classesToRename.size() ? "success" : "partial");
-        
-        if (!errors.isEmpty()) {
-            result.put("errors", errors);
-        }
+            if (classesToRename.isEmpty()) {
+                ctx.status(404).json(Map.of("error", "No classes found in package: " + oldPackageName));
+                logger.error("JADX AI MCP Error: No classes found in package: " + oldPackageName);
+                return;
+            }
 
-        ctx.json(result);
-        logger.info("Package rename complete: " + oldPackageName + " -> " + newPackageName +
-            " (" + renamedCount + "/" + classesToRename.size() + " classes)");
-    } catch (Exception e) {
-        logger.error("JADX AI MCP Error: " + e.getMessage(), e);
-        ctx.status(500).json(Map.of("error", "Internal error renaming package: " + e.getMessage()));
+            // Rename each class
+            for (JavaClass cls : classesToRename) {
+                try {
+                    String oldFullName = cls.getFullName();
+                    String relativePath = oldFullName.substring(oldPackageName.length());
+                    String newFullName = newPackageName + relativePath;
+
+                    ICodeNodeRef nodeRef = cls.getCodeNodeRef();
+                    // pass the FULL new name including package path
+                    NodeRenamedByUser event = new NodeRenamedByUser(nodeRef, cls.getName(), newFullName);
+                    event.setRenameNode(cls.getClassNode());
+                    // Set to false, providing a valid new name, not resetting
+                    event.setResetName(false);
+
+                    mainWindow.events().send(event);
+                    renamedCount++;
+                    logger.info("Renamed class: " + oldFullName + " -> " + newFullName);
+                } catch (Exception e) {
+                    String error = "Failed to rename " + cls.getFullName() + ": " + e.getMessage();
+                    errors.add(error);
+                    logger.error("JADX AI MCP Error: " + error, e);
+                }
+            }
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("oldPackage", oldPackageName);
+            result.put("newPackage", newPackageName);
+            result.put("totalClasses", classesToRename.size());
+            result.put("renamedCount", renamedCount);
+            result.put("status", renamedCount == classesToRename.size() ? "success" : "partial");
+
+            if (!errors.isEmpty()) {
+                result.put("errors", errors);
+            }
+
+            ctx.json(result);
+            logger.info("Package rename complete: " + oldPackageName + " -> " + newPackageName +
+                    " (" + renamedCount + "/" + classesToRename.size() + " classes)");
+        } catch (Exception e) {
+            logger.error("JADX AI MCP Error: " + e.getMessage(), e);
+            ctx.status(500).json(Map.of("error", "Internal error renaming package: " + e.getMessage()));
+        }
     }
-}
-
 
     // method to handle /smali-of-class call
     private void handleSmaliOfClass(Context ctx) {
@@ -1900,6 +1906,332 @@ public class JadxAIMCP implements JadxPlugin {
             return doc;
         } catch (Exception e) {
             throw new JadxRuntimeException("Failed to parse AndroidManifest.xml", e);
+        }
+    }
+
+    // -------------------------- Cross-Reference (Xref) Handlers --------------------------
+
+    // Validate required query parameter, returns null and sends 400 if missing
+    private String validateRequiredParam(Context ctx, String paramName) {
+        String value = ctx.queryParam(paramName);
+        if (value == null || value.isEmpty()) {
+            logger.error("JADX AI MCP Error: Missing '{}' parameter.", paramName);
+            ctx.status(400).json(Map.of("error", "Missing required parameter '" + paramName + "'"));
+            return null;
+        }
+        return value;
+    }
+
+    // Find JavaClass by full name, returns null and sends 404 if not found
+    private JavaClass findClassByName(Context ctx, String className) {
+        JadxWrapper wrapper = mainWindow.getWrapper();
+        for (JavaClass cls : wrapper.getIncludedClassesWithInners()) {
+            if (cls.getFullName().equals(className)) {
+                return cls;
+            }
+        }
+        ctx.status(404).json(Map.of("error", "Class " + className + " not found."));
+        logger.error("JADX AI MCP Error: Class {} not found.", className);
+        return null;
+    }
+
+    // Find methods by name (supports constructors via simple class name)
+    private List<JavaMethod> findMethodsByName(Context ctx, JavaClass javaClass, String methodName) {
+        List<JavaMethod> matchedMethods = new ArrayList<>();
+        String simpleClassName = javaClass.getName();
+        
+        for (JavaMethod method : javaClass.getMethods()) {
+            String actualName = method.getName();
+            if (!method.isConstructor()) {
+                if (actualName.equals(methodName)) {
+                    matchedMethods.add(method);
+                }
+            } else {
+                // Constructor: treat method=<SimpleClassName> as "all constructors"
+                if (methodName.equals(simpleClassName)) {
+                    matchedMethods.add(method);
+                }
+            }
+        }
+        
+        if (matchedMethods.isEmpty()) {
+            ctx.status(404).json(Map.of("error", "Method " + methodName + " not found in class " + javaClass.getFullName()));
+            logger.error("JADX AI MCP Error: Method {} not found in class {}", methodName, javaClass.getFullName());
+            return null;
+        }
+        return matchedMethods;
+    }
+
+    // Find field by name, returns null and sends 404 if not found
+    private JavaField findFieldByName(Context ctx, JavaClass javaClass, String fieldName) {
+        for (JavaField field : javaClass.getFields()) {
+            if (field.getName().equals(fieldName)) {
+                return field;
+            }
+        }
+        ctx.status(404).json(Map.of("error", "Field " + fieldName + " not found in class " + javaClass.getFullName()));
+        logger.error("JADX AI MCP Error: Field {} not found in class {}", fieldName, javaClass.getFullName());
+        return null;
+    }
+
+    // Collect references from MethodNodes with deduplication by "class#method"
+    private List<Map<String, Object>> collectMethodNodeReferences(List<MethodNode> methodNodes) {
+        Set<String> seenReferences = new HashSet<>();
+        List<Map<String, Object>> referenceList = new ArrayList<>();
+
+        for (MethodNode refMethodNode : methodNodes) {
+            Map<String, Object> refInfo = extractMethodNodeReferenceInfo(refMethodNode);
+            if (refInfo != null) {
+                String key = refInfo.get("class") + "#" + refInfo.get("method");
+                if (!seenReferences.contains(key)) {
+                    seenReferences.add(key);
+                    referenceList.add(refInfo);
+                }
+            }
+        }
+        return referenceList;
+    }
+
+    // Send paginated xrefs response
+    private void sendXrefsResponse(Context ctx, List<Map<String, Object>> referenceList) 
+            throws PaginationUtils.PaginationException {
+        Map<String, Object> result = PaginationUtils.handlePagination(
+                ctx, referenceList, "xrefs", "references", ref -> ref);
+        ctx.json(result);
+    }
+
+    // Handle /xrefs-to-class - Find all references to a class
+    // Returns { class, method } for method-level refs, { class, method: "" } for class-level refs
+    private void handleXrefsToClass(Context ctx) {
+        String className = validateRequiredParam(ctx, "class");
+        if (className == null) return;
+
+        try {
+            JavaClass targetJavaClass = findClassByName(ctx, className);
+            if (targetJavaClass == null) return;
+
+            ClassNode targetClassNode = targetJavaClass.getClassNode();
+
+            // Get class-level and method-level references
+            List<ClassNode> classReferences = targetClassNode.getUseIn();
+            List<MethodNode> methodReferences = new ArrayList<>(targetClassNode.getUseInMth());
+            
+            // Include constructor references (for "new MyClass()" calls)
+            for (JavaMethod javaMethod : targetJavaClass.getMethods()) {
+                if (javaMethod.isConstructor()) {
+                    methodReferences.addAll(javaMethod.getMethodNode().getUseIn());
+                }
+            }
+            
+            // Build className -> method names map for quick lookup
+            Map<String, Set<String>> classToMethodsMap = new HashMap<>();
+            for (MethodNode mth : methodReferences) {
+                ClassNode parentClass = mth.getParentClass();
+                if (parentClass != null) {
+                    classToMethodsMap
+                        .computeIfAbsent(parentClass.getFullName(), k -> new HashSet<>())
+                        .add(mth.getName());
+                }
+            }
+            
+            // Add classes that call constructors to classReferences
+            Set<String> existingClassNames = new HashSet<>();
+            for (ClassNode cls : classReferences) {
+                existingClassNames.add(cls.getFullName());
+            }
+            for (MethodNode mth : methodReferences) {
+                ClassNode parentClass = mth.getParentClass();
+                if (parentClass != null && !existingClassNames.contains(parentClass.getFullName())) {
+                    classReferences.add(parentClass);
+                    existingClassNames.add(parentClass.getFullName());
+                }
+            }
+
+            // Process references: method-level first, then class-level (method="")
+            List<Map<String, Object>> referenceList = new ArrayList<>();
+            Set<String> seenReferences = new HashSet<>();
+            
+            for (ClassNode refClassNode : classReferences) {
+                String refClassName = refClassNode.getFullName();
+                
+                if (classToMethodsMap.containsKey(refClassName)) {
+                    // Method-level references
+                    for (MethodNode mth : methodReferences) {
+                        if (mth.getParentClass() != null
+                                && mth.getParentClass().getFullName().equals(refClassName)) {
+                            Map<String, Object> refInfo = extractMethodNodeReferenceInfo(mth);
+                            if (refInfo != null) {
+                                String key = refInfo.get("class") + "#" + refInfo.get("method");
+                                if (!seenReferences.contains(key)) {
+                                    seenReferences.add(key);
+                                    referenceList.add(refInfo);
+                                }
+                            }
+                        }
+                    }
+                    continue;
+                }
+                
+                // Class-level reference (extends/implements/annotations/field-only usage)
+                String key = refClassName + "#class";
+                if (!seenReferences.contains(key)) {
+                    seenReferences.add(key);
+                    Map<String, Object> refInfo = new HashMap<>();
+                    refInfo.put("class", refClassName);
+                    refInfo.put("method", "");
+                    referenceList.add(refInfo);
+                }
+            }
+
+            sendXrefsResponse(ctx, referenceList);
+
+        } catch (PaginationUtils.PaginationException e) {
+            logger.error("JADX AI MCP Pagination Error: " + e.getMessage());
+            ctx.status(400).json(Map.of("error", "Pagination error: " + e.getMessage()));
+        } catch (Exception e) {
+            logger.error("JADX AI MCP Error: " + e.getMessage(), e);
+            ctx.status(500).json(Map.of("error", "Internal error finding class references: " + e.getMessage()));
+        }
+    }
+
+    // Handle /xrefs-to-method - Find all references to a method (includes overrides)
+    private void handleXrefsToMethod(Context ctx) {
+        String className = validateRequiredParam(ctx, "class");
+        if (className == null) return;
+        
+        String methodName = validateRequiredParam(ctx, "method");
+        if (methodName == null) return;
+
+        try {
+            JavaClass containingClass = findClassByName(ctx, className);
+            if (containingClass == null) return;
+
+            List<JavaMethod> matchedMethods = findMethodsByName(ctx, containingClass, methodName);
+            if (matchedMethods == null) return;
+
+            // Get all override-related methods (includes parent/interface methods and subclass overrides)
+            // For constructors: we aggregate override-related sets for ALL matched constructors
+            List<JavaMethod> relatedMethods = new ArrayList<>();
+            for (JavaMethod baseMethod : matchedMethods) {
+                List<JavaMethod> methodsWithOverrides = getMethodWithOverrides(baseMethod);
+                for (JavaMethod m : methodsWithOverrides) {
+                    if (!relatedMethods.contains(m)) {
+                        relatedMethods.add(m);
+                    }
+                }
+            }
+
+            // Collect references from all related methods
+            List<MethodNode> allMethodReferences = new ArrayList<>();
+            for (JavaMethod relatedMethod : relatedMethods) {
+                MethodNode methodNode = relatedMethod.getMethodNode();
+                allMethodReferences.addAll(methodNode.getUseIn());
+            }
+
+            List<Map<String, Object>> referenceList = collectMethodNodeReferences(allMethodReferences);
+            sendXrefsResponse(ctx, referenceList);
+
+        } catch (PaginationUtils.PaginationException e) {
+            logger.error("JADX AI MCP Pagination Error: " + e.getMessage());
+            ctx.status(400).json(Map.of("error", "Pagination error: " + e.getMessage()));
+        } catch (Exception e) {
+            logger.error("JADX AI MCP Error: " + e.getMessage(), e);
+            ctx.status(500).json(Map.of("error", "Internal error finding method references: " + e.getMessage()));
+        }
+    }
+
+    // Handle /xrefs-to-field - Find all references to a field (method is always non-empty)
+    private void handleXrefsToField(Context ctx) {
+        String className = validateRequiredParam(ctx, "class");
+        if (className == null) return;
+        
+        String fieldName = validateRequiredParam(ctx, "field");
+        if (fieldName == null) return;
+
+        try {
+            JavaClass containingClass = findClassByName(ctx, className);
+            if (containingClass == null) return;
+
+            JavaField targetField = findFieldByName(ctx, containingClass, fieldName);
+            if (targetField == null) return;
+
+            // Get field references using FieldNode.getUseIn()
+            FieldNode fieldNode = targetField.getFieldNode();
+            List<MethodNode> fieldReferences = fieldNode.getUseIn();
+
+            List<Map<String, Object>> referenceList = collectMethodNodeReferences(fieldReferences);
+            sendXrefsResponse(ctx, referenceList);
+
+        } catch (PaginationUtils.PaginationException e) {
+            logger.error("JADX AI MCP Pagination Error: " + e.getMessage());
+            ctx.status(400).json(Map.of("error", "Pagination error: " + e.getMessage()));
+        } catch (Exception e) {
+            logger.error("JADX AI MCP Error: " + e.getMessage(), e);
+            ctx.status(500).json(Map.of("error", "Internal error finding field references: " + e.getMessage()));
+        }
+    }
+
+    // Get override-related methods for polymorphic reference tracking
+    private List<JavaMethod> getMethodWithOverrides(JavaMethod javaMethod) {
+        List<JavaMethod> relatedMethods = javaMethod.getOverrideRelatedMethods();
+        if (!relatedMethods.isEmpty()) {
+            return relatedMethods;
+        }
+        // If no override relations found, return just the original method
+        return Collections.singletonList(javaMethod);
+    }
+
+
+    // Extract {class, method} from MethodNode. Converts <clinit> to "" (class-level reference)
+    private Map<String, Object> extractMethodNodeReferenceInfo(MethodNode methodNode) {
+        if (methodNode == null) {
+            return null;
+        }
+
+        try {
+            Map<String, Object> refInfo = new HashMap<>();
+
+            ClassNode declaringClassNode = methodNode.getParentClass();
+            if (declaringClassNode != null) {
+                refInfo.put("class", declaringClassNode.getFullName());
+                ensureClassDecompiled(declaringClassNode);
+            }
+
+            // Use JavaMethod name (includes rename/deobfuscation), fallback to MethodNode name
+            JavaMethod javaMethod = methodNode.getJavaNode();
+            String methodName = (javaMethod != null) ? javaMethod.getName() : methodNode.getName();
+            
+            // <clinit> cannot be queried, treat as class-level reference
+            if ("<clinit>".equals(methodName)) {
+                methodName = "";
+            }
+            
+            refInfo.put("method", methodName);
+            return refInfo;
+
+        } catch (Exception e) {
+            logger.warn("Failed to extract reference info from MethodNode: " + e.getMessage());
+            return null;
+        }
+    }
+
+    // Trigger lazy decompilation if needed, skip if already processed
+    private void ensureClassDecompiled(ClassNode classNode) {
+        if (classNode == null) {
+            return;
+        }
+        
+        try {
+            if (classNode.getState().isProcessComplete()) {
+                return;
+            }
+            
+            JavaClass javaClass = classNode.getJavaNode();
+            if (javaClass != null) {
+                javaClass.decompile();
+            }
+        } catch (Throwable t) {
+            logger.debug("Failed to decompile class {}: {}", classNode.getFullName(), t.getMessage());
         }
     }
 }
