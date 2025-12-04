@@ -1631,10 +1631,20 @@ private void handleMainApplicationClassesCode(Context ctx) {
                 return;
             }
 
-            Map<String, Object> result = new HashMap<>();
-            result.put("files", resourceFileNames);
+            // Apply pagination to the pre-built list
+        Map<String, Object> result = PaginationUtils.handlePagination(
+                ctx,
+                resourceFileNames,
+                "application-classes",
+                "files",
+                item -> item);  // Identity function since items are already transformed
+        
+        logger.info("JADX AI MCP: Pagination result ready");
+        logger.info(result.toString());
+        ctx.json(result);
+            //result.put("files", resourceFileNames);
 
-            ctx.json(result);
+            //ctx.json(result);
         } catch (Exception e) {
             logger.error("JADX AI MCP Error: " + e.getMessage(), e);
             ctx.status(500).json(
