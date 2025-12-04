@@ -1412,60 +1412,91 @@ public class JadxAIMCP implements JadxPlugin {
         }
     }
 
-    // handle /main-application-classes-codes
-    private void handleMainApplicationClassesCode(Context ctx) {
-        try {
-            JadxWrapper wrapper = mainWindow.getWrapper();
-            List<ResourceFile> resources = wrapper.getResources();
-
-            // get the manifest resource file
-            ResourceFile manifestRes = AndroidManifestParser.getAndroidManifest(resources);
-            if (manifestRes == null) {
-                logger.error("JADX AI MCP Error: AndroidManifest.xml not found.");
-                ctx.status(404).json(Map.of("error", "AndroidManifest.xml not found."));
-                return;
-            }
-
-            // load manifest content and parse xml
-            String manifestXml = manifestRes.loadContent()
-                    .getText()
-                    .getCodeStr();
-            Document manifestDoc = parseManifestXml(manifestXml, wrapper.getArgs().getSecurity());
-
-            // Extract the package name from the <manifest> tag
-            Element manifestElement = (Element) manifestDoc.getElementsByTagName("manifest").item(0);
-            String packageName = manifestElement.getAttribute("package");
-
-            if (packageName.isEmpty()) {
-                logger.error("JADX AI MCP Error: Package name not found manifest.");
-                ctx.status(404).json(Map.of("error", "Package name not found manifest."));
-                return;
-            }
-
-            // filter classes under this package
-            List<JavaClass> matchedClasses = wrapper.getDecompiler()
-                    .getClasses()
-                    .stream()
-                    .filter(cls -> cls.getFullName().startsWith(packageName))
-                    .collect(Collectors.toList());
-
-            List<Map<String, Object>> classesInfo = new ArrayList<>();
-            for (JavaClass cls : matchedClasses) {
-                Map<String, Object> classInfo = new HashMap<>();
-                classInfo.put("name", cls.getFullName());
-                classInfo.put("type", "code/java");
-                classInfo.put("content", cls.getCode());
-                classesInfo.add(classInfo);
-            }
-
-            Map<String, Object> result = new HashMap<>();
-            result.put("allClassesInPackage", classesInfo);
-            ctx.json(result);
-        } catch (Exception e) {
-            logger.error("JADX AI MCP Error: " + e.getMessage(), e);
-            ctx.status(500).json(Map.of("error", "Internal error retrieving AndroidManifest.xml: " + e.getMessage()));
+// handle /main-application-classes-codes
+private void handleMainApplicationClassesCode(Context ctx) {
+    try {
+        JadxWrapper wrapper = mainWindow.getWrapper();
+        List<ResourceFile> resources = wrapper.getResources();
+        
+        // get the manifest resource file
+        ResourceFile manifestRes = AndroidManifestParser.getAndroidManifest(resources);
+        if (manifestRes == null) {
+            logger.error("JADX AI MCP Error: AndroidManifest.xml not found.");
+            ctx.status(404).json(Map.of("error", "AndroidManifest.xml not found."));
+            return;
         }
+        
+        // load manifest content and parse xml
+        String manifestXml = manifestRes.loadContent()
+                .getText()
+                .getCodeStr();
+        Document manifestDoc = parseManifestXml(manifestXml, wrapper.getArgs().getSecurity());
+        
+        // Extract the package name from the <manifest> tag
+        Element manifestElement = (Element) manifestDoc.getElementsByTagName("manifest").item(0);
+        String packageName = manifestElement.getAttribute("package");
+        
+        if (packageName.isEmpty()) {
+            logger.error("JADX AI MCP Error: Package name not found manifest.");
+            ctx.status(404).json(Map.of("error", "Package name not found manifest."));
+            return;
+        }
+        
+        logger.info("JADX AI MCP: Package name: " + packageName);
+        
+        // filter classes under this package
+        List<JavaClass> matchedClasses = wrapper.getDecompiler()
+                .getClasses()
+                .stream()
+                .filter(cls -> cls.getFullName().startsWith(packageName))
+                .collect(Collectors.toList());
+        
+        logger.info("JADX AI MCP: Found " + matchedClasses.size() + " classes in package " + packageName);
+        logger.info("JADX AI MCP: Request params - offset: " + ctx.queryParam("offset") + 
+                   ", limit: " + ctx.queryParam("limit") + 
+                   ", count: " + ctx.queryParam("count"));
+        
+        // Build list of class info maps BEFORE pagination
+        List<Map<String, Object>> classInfoList = new ArrayList<>();
+        for (JavaClass cls : matchedClasses) {
+            Map<String, Object> classInfo = new HashMap<>();
+            classInfo.put("name", cls.getFullName());
+            classInfo.put("type", "code/java");
+            try {
+                String code = cls.getCode();
+                classInfo.put("content", code);
+                logger.debug("JADX AI MCP: Successfully got code for " + cls.getFullName() + 
+                           " (length: " + code.length() + ")");
+            } catch (Exception e) {
+                logger.warn("Failed to decompile class " + cls.getFullName() + ": " + e.getMessage());
+                classInfo.put("content", "// Error decompiling class: " + e.getMessage());
+            }
+            classInfoList.add(classInfo);
+        }
+        
+        logger.info("JADX AI MCP: Built " + classInfoList.size() + " class info objects");
+        
+        // Apply pagination to the pre-built list
+        Map<String, Object> result = PaginationUtils.handlePagination(
+                ctx,
+                classInfoList,
+                "application-classes",
+                "classes",
+                item -> item);  // Identity function since items are already transformed
+        
+        logger.info("JADX AI MCP: Pagination result ready");
+        logger.info(result.toString());
+        ctx.json(result);
+        
+    } catch (PaginationUtils.PaginationException e) {
+        logger.error("JADX AI MCP Pagination Error: " + e.getMessage());
+        ctx.status(400).json(Map.of("error", "Pagination error: " + e.getMessage()));
+    } catch (Exception e) {
+        logger.error("JADX AI MCP Error: " + e.getMessage(), e);
+        ctx.status(500).json(Map.of("error", "Internal error retrieving application classes: " + e.getMessage()));
     }
+}
+
 
     // method to handle /main-activity
     private void handleMainActivity(Context ctx) {
