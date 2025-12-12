@@ -95,9 +95,28 @@ Thanks to these wonderful people for their contributions ⭐
 
 <!-- Standalone Plugin for [JADX](https://github.com/skylot/jadx) (Started as Fork) with Model Context Protocol (MCP) integration for AI-powered static code analysis and real-time code review and reverse engineering tasks using Claude.-->
 
+
 <div align="center">
-    <img alt="banner" height="480px" widht="620px" src="docs/assets/img.png">
+    <!--<img alt="banner" height="480px" widht="620px" src="docs/assets/img.png">-->
+ <img width="480px" height="620px" alt="Under Refactoring" src="https://github.com/user-attachments/assets/f196dfd0-3b00-417e-8308-33b754914783" />
+
 </div>
+
+### Announcement
+🚧 🚧 🏗️ Refactoring Mode: ON 🏗️🚧 🚧
+
+Hey everyone, quick update for the JADX AI MCP!
+
+I’ve made the decision to temporarily pause the development of new features and MCP tools. But for a very good reason: We are going modular.
+
+As the project has grown, so has the complexity. To ensure the plugin remains scalable and maintainable for the long haul, I am currently performing a complete architectural overhaul of the codebase. We are moving away from the initial monolithic design to a robust, modular structure (separating core server logic, route handlers, and UI components).
+
+What does this mean for you?
+🛑 New Features: Paused until the refactor is complete.
+✅ Maintenance: Bug fixes and critical optimizations will continue as normal. If something breaks, I’ll fix it.
+
+The Future: Once this foundation is set, adding new tools/improvements in existing tools and features will be faster and more stable than ever.
+
 
 <!-- ![jadx-ai-banner.png](docs/assets/img.png) Image generated using AI tools. -->
 
