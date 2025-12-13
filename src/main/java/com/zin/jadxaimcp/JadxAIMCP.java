@@ -463,7 +463,7 @@ public class JadxAIMCP implements JadxPlugin {
     }
 
     // Restart the server with the current port
-    private void restartServer() {
+    public void restartServer() {
         new Thread(() -> {
             try {
                 logger.info("JADX-AI-MCP Plugin: Restarting server on port " + currentPort);

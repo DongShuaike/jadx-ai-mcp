@@ -58,10 +58,35 @@ public class PluginMenu {
         return pluginsMenu;
     }
 
+    private void showPortConfigDialog() {
+        String input = JOptionPane.showInputDialog(mainWindow,
+            "Enter Server Port (1024-65535):", String.valueOf(plugin.getCurrentPort())
+        );
+
+        if (input != null) {
+            try {
+                int newPort = Integer.parseInt(input.trim());
+                if (newPort >= 1024 && newPort <= 65535) {
+                    if (newPort != plugin.getCurrentPort()) {
+                        plugin.updatePort(newPort);
+                        plugin.restartServer();
+                    }
+                } else {
+                    JOptionPane.showMessageDialog(mainWindow, "Port must be between 1024 and 65535",
+                        "Ivalid Port", JOptionPane.ERROR_MESSAGE);
+                }
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(mainWindow, "Invalid number format",
+                    "Error", JOptionPane.ERROR_MESSAGE
+                );
+            }
+        }
+    }
+
     private void showServerStatus() {
         boolean running = plugin.isServerRunning();
         String status = running ? "Running" : "Stopped";
-        String url = running ? "http://127.0.0.1:" + plugin.currentPort() + "/" : "N/A";
+        String url = running ? "http://127.0.0.1:" + plugin.getCurrentPort() + "/" : "N/A";
 
         JOptionPane.showMessageDialog(mainWindow,
             "Status " + status + "\nPort: " + plugin.getCurrentPort() + "\nURL: " + url,
