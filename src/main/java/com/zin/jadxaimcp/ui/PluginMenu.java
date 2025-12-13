@@ -17,5 +17,44 @@ public class PluginMenu {
         this.mainWindow = mainWindow;
         this.plugin = plugin;
     }
+
+    public void addMenuItems() {
+        SwingUtilities.invokeLater(() -> {
+            try {
+                JMenuBar menuBar = mainWindow.getJMenuBar();
+                if (menuBar == null) {
+                    logger.warn("JADX-AI-MCP Plugin: Menu bar not found");
+                    return;
+                }
+
+                JMenu pluginsMenu = findorCreatePluginsMenu(menuBar);
+                JMenu mcpMenu = new JMenu("JADX AI MCP Server");
+
+
+            } catch (Exception e) {
+
+            }
+        });
+    }
     
+    private JMenu findorCreatePluginsMenu(JMenuBar menuBar) {
+        // Look for existing "Plugins" menu
+        for (int i = 0; i < menuBar.getMenuCount(); i++) {
+            JMenu menu = menuBar.getMenu(i);
+            if (menu != null && ("Plugins".equals(menu.getText()) || "Plugin".equals(menu.getText()))) {
+                return menu;
+            }
+        }
+
+        // Create new if not found, inserting before "Help" if possible
+        JMenu pluginsMenu = new JMenu("Plugins");
+        for (int i = 0; i < menuBar.getMenuCount(); i++) {
+            if ("Help".equals(menuBar.getMenu(i).getText())) {
+                menuBar.add(pluginsMenu, i);
+                return pluginsMenu;
+            }
+        }
+        menuBar.add(pluginsMenu);
+        return pluginsMenu;
+    }
 }
