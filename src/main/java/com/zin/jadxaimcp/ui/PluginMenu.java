@@ -57,4 +57,14 @@ public class PluginMenu {
         menuBar.add(pluginsMenu);
         return pluginsMenu;
     }
+
+    private void showServerStatus() {
+        boolean running = plugin.isServerRunning();
+        String status = running ? "Running" : "Stopped";
+        String url = running ? "http://127.0.0.1:" + plugin.currentPort() + "/" : "N/A";
+
+        JOptionPane.showMessageDialog(mainWindow,
+            "Status " + status + "\nPort: " + plugin.getCurrentPort() + "\nURL: " + url,
+            "MCP Server Status", JOptionPane.INFORMATION_MESSAGE);
+    }
 }

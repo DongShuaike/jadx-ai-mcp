@@ -502,6 +502,25 @@ public class JadxAIMCP implements JadxPlugin {
         }, "JADX-AI-MCP-Restart").start();
     }
 
+    // --- Configuration methods used by UI --- //
+
+    public void updatePort(int newPort) {
+        this.currentPort = newPort;
+        prefs.putInt(PREF_KEY_PORT, newPort);
+    }
+
+    public void resetToDefaultPort() {
+        updatePort(DEFAULT_PORT);
+    }
+
+    public int getCurrentPort() {
+        return currentPort;
+    }
+
+    public boolean isServerRunning() {
+        return pluginServer != null && pluginServer.isRunning(); // pluginServer will be the class for handling the server related code
+    }
+
     // Show server status dialog
     private void showServerStatus() {
         String status = serverStarted && app != null ? "Running" : "Stopped";
