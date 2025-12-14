@@ -27,17 +27,43 @@ public class PluginMenu {
                     return;
                 }
 
-                JMenu pluginsMenu = findorCreatePluginsMenu(menuBar);
+                JMenu pluginsMenu = findOrCreatePluginsMenu(menuBar);
                 JMenu mcpMenu = new JMenu("JADX AI MCP Server");
 
+                // 1. Configure Port
+                JMenuItem portItem = new JMenuItem("Configure Port...");
+                portItem.addActionListener(e -> showPortConfigDialog());
 
+                // 2. Default Port
+                JMenuItem defaultPortItem = new JMenuItem("Default Port");
+                defaultPortItem.addActionListener(e -> {
+                    plugin.resetToDefaultPort();
+                    plugin.restartServer();
+                });
+
+                // 3. Restart Server
+                JMenuItem restartItem = new JMenuItem("Restart Server");
+                restartItem.addActionListener(e -> plugin.restartServer());
+
+                // 4. Server Status
+                JMenuItem statusItem = new JMenuItem("Server Status");
+                statusItem.addActionListener(e -> showServerStatus());
+
+                mcpMenu.add(portItem);
+                mcpMenu.add(defaultPortItem);
+                mcpMenu.addSeparator();
+                mcpMenu.add(restartItem);
+                mcpMenu.add(statusItem);
+                pluginsMenu.add(mcpMenu);
+                
+                logger.debug("JADX-AI-MCP Plugin: Menu items added");
             } catch (Exception e) {
 
             }
         });
     }
     
-    private JMenu findorCreatePluginsMenu(JMenuBar menuBar) {
+    private JMenu findOrCreatePluginsMenu(JMenuBar menuBar) {
         // Look for existing "Plugins" menu
         for (int i = 0; i < menuBar.getMenuCount(); i++) {
             JMenu menu = menuBar.getMenu(i);
