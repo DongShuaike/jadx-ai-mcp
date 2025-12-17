@@ -126,7 +126,7 @@ public class PluginServer {
         app.get("/main-application-classes-names", resourceRoutes::handleMainApplicationClassesNames);
         app.get("/main-activity", resourceRoutes::handleMainActivity);
 
-        // --- Refactoring (Renaming) ---
+        // --- Renaming ---
         app.get("/rename-class", refactoringRoutes::handleRenameClass);
         app.get("/rename-method", refactoringRoutes::handleRenameMethod);
         app.get("/rename-field", refactoringRoutes::handleRenameField);
