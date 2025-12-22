@@ -18,6 +18,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.zin.jadxaimcp.utils.PaginationUtils;
+import com.zin.jadxaimcp.utils.PrintError;
+
 public class ClassRoutes {
     private static final Logger logger = LoggerFactory.getLogger(ClassRoutes.class);
     private final MainWindow mainWindow;
@@ -31,14 +34,246 @@ public class ClassRoutes {
     // ------------------------------- Request Handlers --------------------------
 
     /**
-     * @param   ctx
+     * @param   Context
      * @return  void
+     * 
+     * This handler method handle the /current-class api call, 
+     * It return currently open/active/visible class code in UI in jadx.
+     * Using helper methods getSelectedTabTitle() and extractTextFromCurrentTab() it gets
+     * the title of UI component holding class code and then using that UI component extracts
+     * the text from  that UI component.
+     * 
+     * After getting the code it returns it.
      */
     public void handleCurrentClass(Context ctx) {
         try {
             String className = getSelectedTabTitle();
-        } catch (Exception e) {}
+            String code = extractTextFromCurrentTab();
+
+            Map<String, String> result = new HashMap<>();
+            result.put("name", className != null ? className.replace(".java", "") : "unknown");
+            result.put("type", "code/java");
+            result.put("content", code != null ? code : "");
+
+            ctx.json(result);
+        } catch (Exception e) {
+            PrintError.handleError(ctx, "Internal Error while trying to fetch current
+            class class: " + e.getMessage(), e, logger);
+        }
     }
+
+    /**
+     * @return
+     * @param Context
+     * 
+     * This routing method returns all classes decompiled from apk by jadx
+     * It first fetches the list of JavaClass classes using JadxWrapper.
+     * Then it combines this JavaClass list into Map and uses pagination utils to return the 
+     * details of all classes.
+     */
+    public void handleAllClasses(Context ctx) {
+        try {
+            JadxWrapper wrapper = mainWindow.getWrapper();
+            List<JavaClass> classes = wrapper.getIncludedClassesWithInners();
+
+            Map<String, Object> result = paginationUtils.handlePagination(
+                ctx,
+                classes,
+                "class-list",
+                "classes",
+                JavaClass::getFullName
+            );
+            ctx.json(result);
+        } catch (PaginationException e) {
+            PrintError.handleError(ctx, "Pagination Error: " + e.getMessage(), e, logger);
+        } catch (Exception e) {
+            PrintError.handleError(ctx, "Failed to load class list: " + e.getMessage(), e, logger);
+        }
+    }
+
+    /**
+     * @param Context
+     * @return
+     * 
+     * This routing method handles the /selected-text api call
+     * it first gets the currently selecte UI component using MainWindow's methods
+     * Then it find the text area from the currently active UI component, this text area
+     * holds the selected text.
+     * 
+     * From this text area, it fetches the selected text using getSelectedText() method and
+     * returns this using Map and ctx.
+     */
+    public void handleSelectedText(Context ctx) {
+        try {
+            Component selectedComponent = mainWindow.getTabbedPane().getSelectedComponent();
+            JTextArea textArea = findTextArea(selectedComponent);
+            String selectedText = textArea != null ? textArea.getSelectedText() : null;
+
+            Map<String, String> result = new HashMap<>();
+            result.put("selectedText", selectedText != null ? selectedText : "");
+            ctx.json(result);
+        } catch (Exception e) {
+            PrintError.handleError(ctx, "Internal error while trying to fetch selected 
+            text: " + e.getMessage(), e, logger);
+        }
+    }
+
+    /**
+     * @param Context
+     * @return void
+     * 
+     * This routing method handles the /class-source MCP tool call
+     * First it checks for request validity, the check is availability of
+     * 'class' parameter in http request, then it fetches the source code of the class
+     * by fetching the classes one by one and compares it with the requested class name, if 
+     * it matches returns the requested classe's code.
+     */
+    public void handleClassSource(Context ctx) {
+        String className = ctx.queryParam("class");
+        if (className == null || className.isEmpty()) {
+            logger.error("JADX AI MCP Error: Missing 'class' parameter.");
+            ctx.status(400).json(Map.of("error", "Missing 'class' parameter."));
+            return;
+        }
+
+        // Removing this line to solve issue #37 as raised and contributed by
+        // github@ljt270864457
+        // This solves following bug -> Bug: Inner classes with $ symbol cannot be
+        // retrieved via /class-source endpoint
+        // className = className.replace('$', '.');
+
+        try {
+            JadxWrapper wrapper = mainWindow.getWrapper();
+            for (JavaClass cls : wrapper.getIncludedClassesWithInners()) {
+                if (cls.getFullName().equals(className)){
+                    ctx.result(cls.getCode());
+                    return;
+                }
+            }
+            ctx.status(404).json(Map.of("error", "Class " + className + " not found"));
+        } catch (Exception e) {
+            PrintError(ctx, "Internal error retrieving class source: " + e.getMessage(), e, logger);
+        }
+    }
+
+    /**
+     * @param Context
+     * @return void
+     * 
+     * This routing method handles the /methods-of-class endpoint.
+     * First it checks whether the 'class_name' parameter is present or not in http request
+     * then it iterates over each class present in jadx, and matches it for the `class_name`'s value
+     * Then once the requested class is found, it iterates over the methods of that class and gathers 
+     * their details. 
+     * 
+     * After gathering the details it returns the methods details.
+     */
+    public void handleMethodsOfClass(Context ctx) {
+        String className = ctx.queryParam("class_name");
+        if (className == null || className.isEmpty()) {
+            PrintError.handleError(ctx, 400, "Missing required parameter 'class_name'", logger);
+            return;
+        }
+
+
+        // Removing this line to solve issue #37 as raised and contributed by
+        // github@ljt270864457
+        // This solves following bug -> Bug: Inner classes with $ symbol cannot be
+        // retrieved via /methods-of-class endpoint
+        // className = className.replace('$', '.');
+
+        try {
+            JadxWrapper wrapper = mainWindow.getWrapper();
+            for (JavaClass cls : wrapper.getIncludedClassesWithInners()) {
+                if (cls.getFullName().equals(className)) {
+                    List<String> methods = new ArrayList<>();
+                    for (JavaMethod method : cls.getMethods()) {
+                        String fullMethodName = cls.getFullName() + "." + method.getName();
+                        String methodData = method.getAccessFlags() +
+                        " " + method.getReturnType() + 
+                        " " + method.getName() + 
+                        " " + method.getMethodNode() + 
+                        " " + fullMethodName;
+                        methods.add(methodData);
+                    }
+                    ctx.result(String.join("\n", methods));
+                    return;
+                }
+            }
+            PrintError(ctx, 404, "Class " + className + " not found.", logger);
+        } catch (Exception e) {
+            PrintError.handleError(ctx, "Internal error retrieving methods: " + e.getMessage(), e, logger);
+        }
+    }
+
+    /**
+     * @param Context
+     * @return void
+     * 
+     * This routing method handles the /fields-of-class mcp tool call
+     * After checking for presence of 'class_name' parameter, it finds the class with 
+     * 'class_name' name, after finding the requested class, it fetches the fields of class 
+     * starts gathering their details.
+     * 
+     * Then it return these details.
+     */
+    public void handleFieldsOfClass(Context ctx) {
+        String className = ctx.queryParam("class_name");
+        if (className == null || className.isEmpty()) {
+            PrintError.handleError(ctx, 400, "Missing required parameter 'class_name'", logger);
+            return;
+        }
+
+        try {
+            JadxWrapper wrapper = mainWindow.getWrapper();
+            for (JavaClass cls : wrapper.getIncludedClassesWithInners()) {
+                if (cls.getFullName().equals(className)) {
+                    List<String> fields = new ArrayList<>();
+                    for (JavaField field : cls.getFields()) {
+                        String fieldData = field.getAccessFlags() + 
+                        " " + field.getType() +
+                        " " + field.getName();
+                        fields.add(fieldData);
+                    }
+                    ctx.result(String.join("\n", fields));
+                    return;
+                }
+            }
+            PrintError.handleError(ctx, 404, "Class " + className + " not found.", logger);
+        } catch (Exception e) {
+            PrintError(ctx, "Internal error retrieving fields: " + e.getMessage(), e, logger);
+        }
+    }
+
+    /**
+     * @param Context
+     * @return void
+     * 
+     * This routing method handles the /smali-of-class mcp tool call
+     * After checking for availability of 'class' parameter in request, it finds that class,
+     * After finding that class it fetch smali of that class and returns it.
+     */
+    public void handleSmaliOfClass(Context ctx) {
+        String className = ctx.queryParam("class");
+        if (className == null || className.isEmpty()) {
+            PrintError.handleError(ctx, 400, "Missing 'class' parameter.", logger);
+            return;
+        }
+
+        try {
+            JadxWrapper wrapper = mainWindow.getWrapper();
+            for (JavaClass cls : wrapper.getIncludedClassesWithInners()) {
+                if (cls.getFullName().equals(className)) {
+                    ctx.result(cls.getSmali());
+                    return;
+                }
+            }
+            PrintError(ctx, 404, "Class " + className + " not found.");
+        } catch (Exception e) {
+            PrintError(ctx, "Internal error retrieving smali: " + e.getMessage(), e, logger);
+        }
+    }
+
 
 
     // -------------------------------- Helper methods ----------------------------
