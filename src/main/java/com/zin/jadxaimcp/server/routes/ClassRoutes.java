@@ -31,7 +31,6 @@ public class ClassRoutes {
     // ------------------------------- Request Handlers --------------------------
 
     /**
-     * @name    handleCurrentClass
      * @param   ctx
      * @return  void
      */
