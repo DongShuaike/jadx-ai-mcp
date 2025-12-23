@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.zin.jadxaimcp.server.PluginServer;
+import com.zin.jadxaimcp.utils.JadxAIMCPPluginError;
 
 public class GeneralRoutes {
     private static final Logger logger = LoggerFactory.getLogger(GeneralRoutes.class);
@@ -47,8 +48,7 @@ public class GeneralRoutes {
 
             logger.debug("JADX AI MCP Plugin: GOT HEALTH PING");
         } catch (Exception e) {
-            logger.error("JADX AI MCP Error: " + e.getMessage(), e);
-            ctx.status(500).json(Map.of("error", "Internal Error while trying to handle health ping request: " + e.getMessage()));
+            JadxAIMCPPluginError.handleError(ctx, "Internal Error while trying to handle health ping request: " + e.getMessage(), e, logger);
         }
     }
     
