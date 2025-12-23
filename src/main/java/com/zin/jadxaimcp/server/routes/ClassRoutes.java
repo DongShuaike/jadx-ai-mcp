@@ -57,8 +57,7 @@ public class ClassRoutes {
 
             ctx.json(result);
         } catch (Exception e) {
-            PrintError.handleError(ctx, "Internal Error while trying to fetch current
-            class class: " + e.getMessage(), e, logger);
+            PrintError.handleError(ctx, "Internal Error while trying to fetch current class class: " + e.getMessage(), e, logger);
         }
     }
 
@@ -113,8 +112,7 @@ public class ClassRoutes {
             result.put("selectedText", selectedText != null ? selectedText : "");
             ctx.json(result);
         } catch (Exception e) {
-            PrintError.handleError(ctx, "Internal error while trying to fetch selected 
-            text: " + e.getMessage(), e, logger);
+            PrintError.handleError(ctx, "Internal error while trying to fetch selected text: " + e.getMessage(), e, logger);
         }
     }
 

@@ -2,8 +2,8 @@ package com.zin.jadxaimcp.utils;
 
 import java.util.*;
 
-import sl4fj.logger.Logger;
-import sl4fj.logger.LoggerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.javalin.http.Context;
 
