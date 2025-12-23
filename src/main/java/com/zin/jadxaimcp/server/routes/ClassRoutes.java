@@ -129,12 +129,8 @@ public class ClassRoutes {
      * it matches returns the requested classe's code.
      */
     public void handleClassSource(Context ctx) {
-        String className = ctx.queryParam("class");
-        if (className == null || className.isEmpty()) {
-            logger.error("JADX AI MCP Error: Missing 'class' parameter.");
-            ctx.status(400).json(Map.of("error", "Missing 'class' parameter."));
-            return;
-        }
+        String className = checkClassParam(ctx);
+        if (className == null) return;
 
         // Removing this line to solve issue #37 as raised and contributed by
         // github@ljt270864457
@@ -169,12 +165,8 @@ public class ClassRoutes {
      * After gathering the details it returns the methods details.
      */
     public void handleMethodsOfClass(Context ctx) {
-        String className = ctx.queryParam("class_name");
-        if (className == null || className.isEmpty()) {
-            PrintError.handleError(ctx, 400, "Missing required parameter 'class_name'", logger);
-            return;
-        }
-
+        String className = checkClassParam(ctx);
+        if (className == null) return;
 
         // Removing this line to solve issue #37 as raised and contributed by
         // github@ljt270864457
@@ -218,11 +210,8 @@ public class ClassRoutes {
      * Then it return these details.
      */
     public void handleFieldsOfClass(Context ctx) {
-        String className = ctx.queryParam("class_name");
-        if (className == null || className.isEmpty()) {
-            PrintError.handleError(ctx, 400, "Missing required parameter 'class_name'", logger);
-            return;
-        }
+        String className = checkClassParam(ctx);
+        if (className == null) return;
 
         try {
             JadxWrapper wrapper = mainWindow.getWrapper();
@@ -254,11 +243,8 @@ public class ClassRoutes {
      * After finding that class it fetch smali of that class and returns it.
      */
     public void handleSmaliOfClass(Context ctx) {
-        String className = ctx.queryParam("class");
-        if (className == null || className.isEmpty()) {
-            PrintError.handleError(ctx, 400, "Missing 'class' parameter.", logger);
-            return;
-        }
+        String className = checkClassParam(ctx);
+        if (className == null) return;
 
         try {
             JadxWrapper wrapper = mainWindow.getWrapper();
@@ -278,6 +264,22 @@ public class ClassRoutes {
 
     // -------------------------------- Helper methods ----------------------------
     
+    /**
+     * @param Context
+     * @return String
+     * 
+     * Checks if the HTTP request contains the 'class_name' param or not, if yes then returns it,
+     * else returns null
+     */
+    private String checkClassParam(Context ctx) {
+        String className = ctx.queryParam("class_name");
+        if (className == null || className.isEmpty()) {
+            PrintError.handleError(ctx, 400, "Missing required parameter 'class_name'", logger);
+            return null;
+        }
+        return className;
+    }
+
     /**
      * @param
      * @return String
