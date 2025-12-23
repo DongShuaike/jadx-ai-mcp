@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import io.javalin.http.Context;
 
-public class PrintError {
+public class JadxAIMCPPluginError {
     public static void handleError(Context ctx, String error_response, Exception e, Logger logger) {
         logger.error("JADX AI MCP Error: " + error_response, e);
         ctx.status(500).json(Map.of("error", error_response));

@@ -19,7 +19,8 @@ import java.util.List;
 import java.util.Map;
 
 import com.zin.jadxaimcp.utils.PaginationUtils;
-import com.zin.jadxaimcp.utils.PrintError;
+import com.zin.jadxaimcp.utils.PaginationUtils.PaginationException;
+import com.zin.jadxaimcp.utils.JadxAIMCPPluginError;
 
 public class ClassRoutes {
     private static final Logger logger = LoggerFactory.getLogger(ClassRoutes.class);
@@ -57,7 +58,7 @@ public class ClassRoutes {
 
             ctx.json(result);
         } catch (Exception e) {
-            PrintError.handleError(ctx, "Internal Error while trying to fetch current class class: " + e.getMessage(), e, logger);
+            JadxAIMCPPluginError.handleError(ctx, "Internal Error while trying to fetch current class class: " + e.getMessage(), e, logger);
         }
     }
 
@@ -84,9 +85,9 @@ public class ClassRoutes {
             );
             ctx.json(result);
         } catch (PaginationException e) {
-            PrintError.handleError(ctx, "Pagination Error: " + e.getMessage(), e, logger);
+            JadxAIMCPPluginError.handleError(ctx, "Pagination Error: " + e.getMessage(), e, logger);
         } catch (Exception e) {
-            PrintError.handleError(ctx, "Failed to load class list: " + e.getMessage(), e, logger);
+            JadxAIMCPPluginError.handleError(ctx, "Failed to load class list: " + e.getMessage(), e, logger);
         }
     }
 
@@ -112,7 +113,7 @@ public class ClassRoutes {
             result.put("selectedText", selectedText != null ? selectedText : "");
             ctx.json(result);
         } catch (Exception e) {
-            PrintError.handleError(ctx, "Internal error while trying to fetch selected text: " + e.getMessage(), e, logger);
+            JadxAIMCPPluginError.handleError(ctx, "Internal error while trying to fetch selected text: " + e.getMessage(), e, logger);
         }
     }
 
@@ -146,7 +147,7 @@ public class ClassRoutes {
             }
             ctx.status(404).json(Map.of("error", "Class " + className + " not found"));
         } catch (Exception e) {
-            PrintError(ctx, "Internal error retrieving class source: " + e.getMessage(), e, logger);
+            JadxAIMCPPluginError.handleError(ctx, "Internal error retrieving class source: " + e.getMessage(), e, logger);
         }
     }
 
@@ -190,9 +191,9 @@ public class ClassRoutes {
                     return;
                 }
             }
-            PrintError(ctx, 404, "Class " + className + " not found.", logger);
+            JadxAIMCPPluginError.handleError(ctx, 404, "Class " + className + " not found.", logger);
         } catch (Exception e) {
-            PrintError.handleError(ctx, "Internal error retrieving methods: " + e.getMessage(), e, logger);
+            JadxAIMCPPluginError.handleError(ctx, "Internal error retrieving methods: " + e.getMessage(), e, logger);
         }
     }
 
@@ -226,9 +227,9 @@ public class ClassRoutes {
                     return;
                 }
             }
-            PrintError.handleError(ctx, 404, "Class " + className + " not found.", logger);
+            JadxAIMCPPluginError.handleError(ctx, 404, "Class " + className + " not found.", logger);
         } catch (Exception e) {
-            PrintError(ctx, "Internal error retrieving fields: " + e.getMessage(), e, logger);
+            JadxAIMCPPluginError.handleError(ctx, "Internal error retrieving fields: " + e.getMessage(), e, logger);
         }
     }
 
@@ -252,9 +253,9 @@ public class ClassRoutes {
                     return;
                 }
             }
-            PrintError(ctx, 404, "Class " + className + " not found.");
+            JadxAIMCPPluginError.handleError(ctx, 404, "Class " + className + " not found.", logger);
         } catch (Exception e) {
-            PrintError(ctx, "Internal error retrieving smali: " + e.getMessage(), e, logger);
+            JadxAIMCPPluginError.handleError(ctx, "Internal error retrieving smali: " + e.getMessage(), e, logger);
         }
     }
 
@@ -272,7 +273,7 @@ public class ClassRoutes {
     private String checkClassParam(Context ctx) {
         String className = ctx.queryParam("class_name");
         if (className == null || className.isEmpty()) {
-            PrintError.handleError(ctx, 400, "Missing required parameter 'class_name'", logger);
+            JadxAIMCPPluginError.handleError(ctx, 400, "Missing required parameter 'class_name'", logger);
             return null;
         }
         return className;

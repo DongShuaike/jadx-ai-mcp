@@ -48,7 +48,7 @@ public class GeneralRoutes {
             logger.debug("JADX AI MCP Plugin: GOT HEALTH PING");
         } catch (Exception e) {
             logger.error("JADX AI MCP Error: " + e.getMessage(), e);
-            ctx.status(500).json(Map.of("error", "Internal Error while trying to handle health ping request: " + e.getmessage()));
+            ctx.status(500).json(Map.of("error", "Internal Error while trying to handle health ping request: " + e.getMessage()));
         }
     }
     

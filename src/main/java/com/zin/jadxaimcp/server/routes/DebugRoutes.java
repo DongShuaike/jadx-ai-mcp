@@ -15,7 +15,7 @@ import javax.swing.tree.TreeNode;
 import java.lang.reflect.Field;
 import java.util.*;
 
-import com.zin.jadxaimcp.utils.PrintError;
+import com.zin.jadxaimcp.utils.JadxAIMCPPluginError;
 
 public class DebugRoutes {
     private static final Logger logger = LoggerFactory.getLogger(DebugRoutes.class);
@@ -54,7 +54,7 @@ public class DebugRoutes {
 
             ctx.json(Map.of("stackFrames", frames, "count", frames.size()));
         } catch (Exception e) {
-            PrintError.handleError(ctx, "Failed to get stack frames: " + e.getMessage(), e, logger);
+            JadxAIMCPPluginError.handleError(ctx, "Failed to get stack frames: " + e.getMessage(), e, logger);
         }
     }
 
@@ -77,7 +77,7 @@ public class DebugRoutes {
             Field threadField = JDebuggerPanel.class.getDeclaredField("threadBox");
             threadField.setAccessible(true);
             JComboBox<?> threadBox = (JComboBox<?>) threadField.get(debuggerPanel);
-            DefaultComboBoxMOdel<?> model = (DefaultComboBoxModel<?>) threadBox.getModel();
+            DefaultComboBoxModel<?> model = (DefaultComboBoxModel<?>) threadBox.getModel();
 
             List<String> threads = new ArrayList<>();
             for (int i = 0; i < model.getSize(); i++) {
@@ -91,7 +91,7 @@ public class DebugRoutes {
             result.put("count", threads.size());
             ctx.json(result);
         } catch (Exception e) {
-            PrintError.handleError(ctx, "Error while trying to get the threads: " + e.getMessage(), e, logger);
+            JadxAIMCPPluginError.handleError(ctx, "Error while trying to get the threads: " + e.getMessage(), e, logger);
         }
     }
 
@@ -125,7 +125,7 @@ public class DebugRoutes {
             variables.put("thisObject", extractTreeNodeData(thisTreeNode));
             ctx.json(variables);
         } catch (Exception e) {
-            PrintError.handleError(ctx, "Error while trying to get the debug variables: " + e.getMessage(), e, logger);
+            JadxAIMCPPluginError.handleError(ctx, "Error while trying to get the debug variables: " + e.getMessage(), e, logger);
         }
     }
 
