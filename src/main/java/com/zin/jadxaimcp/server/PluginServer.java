@@ -106,6 +106,9 @@ public class PluginServer {
         app.get("/smali-of-class", classRoutes::handleSmaliOfClass);
         app.get("/methods-of-class", classRoutes::handleMethodsOfClass);
         app.get("/fields-of-class", classRoutes::handleFieldsOfClass);
+        app.get("/main-application-classes-code", classRoutes::handleMainApplicationClassesCode);
+        app.get("/main-application-classes-names", classRoutes::handleMainApplicationClassesNames);
+        app.get("/main-activity", classRoutes::handleMainActivity);
 
         // --- Search & Lookup ---
         app.get("/method-by-name", searchRoutes::handleMethodByName);
@@ -122,9 +125,6 @@ public class PluginServer {
         app.get("/strings", resourceRoutes::handleStrings);
         app.get("/list-all-resource-files-names", resourceRoutes::handleListAllResourceFilesNames);
         app.get("/get-resource-file", resourceRoutes::handleGetResourceFile);
-        app.get("/main-application-classes-code", resourceRoutes::handleMainApplicationClassesCode);
-        app.get("/main-application-classes-names", resourceRoutes::handleMainApplicationClassesNames);
-        app.get("/main-activity", resourceRoutes::handleMainActivity);
 
         // --- Renaming ---
         app.get("/rename-class", refactoringRoutes::handleRenameClass);

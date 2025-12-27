@@ -259,7 +259,203 @@ public class ClassRoutes {
         }
     }
 
+    /**
+     * @return void
+     * @param Context
+     * 
+     * This routing method handle the /main-activity mcp tool call.
+     * 1. It gets the manifest file
+     * 2. It gets the manifest file parser
+     * 3. It parses the manifest file and fetches the name of the Main Activity class
+     * 4. It gets the Main Activity class code and returns it.
+     */
+    public void handleMainActivity(Context ctx) {
+        try {
+            JadxWrapper wrapper = mainWindow.getWrapper();
+            ResourceFile manifestRes = getManifestFile();
+            if (manifestRes == null) {
+                JadxAIMCPPluginError.handleError(ctx, 404, "AndroidManifest.xml not found", logger);
+                return;
+            }
+    
+            AndroidManifestParser parser = new AndroidManifestParser(
+                manifestRes,
+                EnumSet.of(AppAttribute.MAIN_ACTIVITY),
+                wrapper.getArgs().getSecurity());
+            
+            if (!parser.isManifestFound()) {
+                JadxAIMCPPluginError.handleError(ctx, 404, "AndroidManifest.xml not found.");
+                return;
+            }
+    
+            ApplicationParams results = parser.parse();
+            if (results.getMainActivity() == null) {
+                JadxAIMCPPluginError.handleError(ctx, 404, "Failed to get main activity from manifest.", logger);
+                return;
+            }
+    
+            JavaClass mainActivityClass = results.getMainActivityJavaClass(wrapper.getDecompiler());
+            if (mainActivityClass == null) {
+                JadxAIMCPPluginError.handleError(ctx, 404, "Failed to get activity class: " + results.getApplication(), logger);
+                return;
+            }
+    
+            ctx.json(Map.of("name", mainActivityClass.getFullName(), "type", "code/java", "content", mainActivityClass.getCode()));
+        } catch (Exception e) {
+            JadxAIMCPPluginError.handleError(ctx, "Internal error occurred while trying to get the Main Activity class code: " + e.getMessage(), e, logger);
+        }
+    }
 
+    /**
+     * @return void
+     * @param Context
+     * 
+     * This method handles the /main-application-classes-names mcp tool call.
+     * 
+     * First goal is to get the package name, to get this first it gets the manifest file.
+     * Then parses it and get's the package name from it. Then get all the decompiled classes and
+     * filter them under the package name of main applcaiton. After filtering classes, build a dictionary
+     * of them and return them.
+     */
+    public void handleMainApplicationClassesNames(Context ctx) {
+        try {
+            JadxWrapper wrapper = mainWindow.getWrapper();
+            List<ResourceFile> resources = wrapper.getResources();
+
+            ResourceFile manifestRes = AndroidManifestParser.getAndroidManifest(resources);
+            if (manifestRes == null) {
+                JadxAIMCPPluginError.handleError(ctx, 404, "AndroidManifest.xml not found.", logger);
+                return;
+            }
+
+            String manifestXml = manifestRes.loadContent().getText().getCodeStr();
+            Document manifestDoc = parseManifestXml(manifestXml, wrapper.getArgs().getSecurity());
+
+            Element manifestElement = (Element) manifestDoc.getElementsByTagName("manfiest").item(0);
+            String packageName = manifestElement.getAttribute("package");
+
+            if (packageName.isEmpty()) {
+                JadxAIMCPPluginError.handleError(ctx, 404, "Package name not found in manifest.", logger);
+                return;
+            }
+
+            // Changed the getClasses() to getClassesWithInners()
+            List<JavaClass> matchedClasses = wrapper.getDecompiler()
+                .getClassesWithInners()
+                .stream()
+                .filter(cls -> cls.getFullName().startsWith(packageName))
+                .collect(Collectors.toList());
+
+            List<Map<String, Object>> classesInfo = new ArrayList<>();
+            for (JavaClass cls : matchedClasses) {
+                Map<String, Object> classInfo = new HashMap<>();
+                classInfo.put("name", cls.getFullName());
+                classesInfo.add(classInfo);
+            }
+            
+            Map<String, Object> result = new HashMap<>();
+            result.put("classes", classesInfo);
+            ctx.json(result);
+        } catch (Exception e) {
+            JadxAIMCPPluginError.handleError(ctx, "Internal error while trying to fetch all classes names: " + e.getMessage(), e, logger);
+        }
+    }
+
+    /**
+     * @param Context
+     * @return void
+     * 
+     * This routing method handles the /main-application-classes-code MCP tool call.
+     * 1. It retrieves the AndroidManifest.xml resource file
+     * 2. It parses the manifest XML to extract the application's package name
+     * 3. It filters all decompiled classes (including inner classes) that belong to the main package
+     * 4. For each matched class, it builds a map containing:
+     *    - Class full name
+     *    - Content type (code/java)
+     *    - Decompiled source code (or error message if decompilation fails)
+     * 5. It applies pagination to the collected class information
+     * 6. It returns the paginated result containing class details with their source code
+     * 
+     * Note: This method handles decompilation errors gracefully by including error messages
+     * in the content field instead of failing the entire request.
+     */
+    public void handleMainApplicationClassesCode(Context ctx) {
+        try {
+            JadxWrapper wrapper = mainWindow.getWrapper();
+            List<ResourceFile> resources = wrapper.getResources();
+
+            // get the manifest resource file
+            ResourceFile manifestRes = AndroidManifestParser.getAndroidManifest(resources);
+            if (manifestRes == null) {
+                JadxAIMCPPluginError.handleError(ctx, 404, "AndroidManifest.xml not found.", logger);
+                return;
+            }
+
+            // load manifest content and parse xml
+            String manifestXml = manifestRes.loadContent()
+                    .getText()
+                    .getCodeStr();
+            Document manifestDoc = parseManifestXml(manifestXml, wrapper.getArgs().getSecurity());
+
+            // Extract the package name from the <manifest> tag
+            Element manifestElement = (Element) manifestDoc.getElementsByTagName("manifest").item(0);
+            String packageName = manifestElement.getAttribute("package");
+
+            if (packageName.isEmpty()) {
+                JadxAIMCPPluginError.handleError(ctx, 404, "Package name not found in AndroiManifest.xml", logger);
+                return;
+            }
+
+            logger.info("JADX AI MCP: Package name: " + packageName);
+            // filter classes under this package
+            // Changed the getClasses() to getClassesWithInners()
+            List<JavaClass> matchedClasses = wrapper.getDecompiler()
+                    .getClassesWithInners()
+                    .getall()
+                    .stream()
+                    .filter(cls -> cls.getFullName().startsWith(packageName))
+                    .collect(Collectors.toList());
+            
+            logger.info("JADX AI MCP: Found " + matchedClasses.size() + " classes in package " + packageName);
+            logger.info("JADX AI MCP: Request params - offset: " + ctx.queryParam("offset") + 
+                        ", limit: " + ctx.queryParam("limit") + 
+                        ", count: " + ctx.queryParam("count"));
+            
+            // Build list of class info maps Before pagination
+            List<Map<String, Object>> classInfoList = new ArrayList<>();
+            for (JavaClass cls : matchedClasses) {
+                Map<String, Object> classInfo = new HashMap<>();
+                classInfo.put("name", cls.getFullName());
+                classInfo.put("type", "code/java");
+                try {
+                    String code = cls.getCode();
+                    classInfo.put("content", code);
+                    logger.debug("JADX AI MCP: Successfully got code for " + cls.getFullname() + 
+                                " (length: " + code.length() + ")");
+                } catch (Exception e) {
+                    logger.warn("Failed to decompile class " + cls.getFullName() + ": " + e.getMessage());
+                    classInfo.put("content", "// Error decompiling class: " + e.getMessage());
+                }
+                classInfoList.add(classInfo);
+            }
+
+            logger.info("JADX AI MCP: Built " + classInfoList.size() + " class info objects");
+
+            // Apply pagination to the pre-build list
+            Map<String, Object> result = paginationUtils.handlePagination(
+                ctx,
+                classInfoList,
+                "application-classes",
+                "classes",
+                item -> item); // Identity function since items are already transformed
+            
+            ctx.json(result);
+        } catch (PaginationException e) {
+            JadxAIMCPPluginError.handleError(ctx, "Internal error while generating pagination result for handleMainApplicationClassesCode: " + e.getMessage(), e, logger);
+        } catch (Exception e) {
+            JadxAIMCPPluginError.handleError(ctx, "Internal error occurred while retrieving main application classes' code: " + e.getMessage(), e, logger);
+        }
+    }
 
     // -------------------------------- Helper methods ----------------------------
     
