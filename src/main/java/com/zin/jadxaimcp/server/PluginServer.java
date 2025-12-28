@@ -109,12 +109,13 @@ public class PluginServer {
         app.get("/main-application-classes-code", classRoutes::handleMainApplicationClassesCode);
         app.get("/main-application-classes-names", classRoutes::handleMainApplicationClassesNames);
         app.get("/main-activity", classRoutes::handleMainActivity);
+        app.get("/search-classes-by-keyword", classRoutes::handleSearchClassesByKeyword);
 
-        // --- Search & Lookup ---
+
+        // --- Methods ---
         app.get("/method-by-name", searchRoutes::handleMethodByName);
         app.get("/search-method", searchRoutes::handleSearchMethod);
-        app.get("/search-classes-by-keyword", searchRoutes::handleSearchClassesByKeyword);
-
+        
         // --- Analysis (Xrefs) ---
         app.get("/xrefs-to-class", analysisRoutes::handleXrefsToClass);
         app.get("/xrefs-to-method", analysisRoutes::handleXrefsToMethod);

@@ -457,6 +457,57 @@ public class ClassRoutes {
         }
     }
 
+    /**
+     * @return void
+     * @param Context
+     * 
+     * This method handles the call for /search-classes-by-keyword mcp tool.
+     * 
+     * First it checks if the request parameter 'search_term' is present or not.
+     * Then using JadxWrapper it gets list of all classes. Then using search term it
+     * filters all the classes matched with term and gets their code.
+     * 
+     * After this it returns the result.
+     */
+    public void handleSearchClassesByKeyword(Context ctx) {
+        String searchTerm = ctx.queryParam("search_term");
+        if (searchTerm == null || searchTerm.isEmpty()) {
+            JadxAIMCPPluginError.handleError(ctx, 400, "Missing 'search_term' parameter.");
+            return;
+        }
+
+        try {
+            JadxWrapper wrapper = mainWindow.getWrapper();
+            List<JavaClass> allClasses = wrapper.getIncludedClassesWithInners();
+            String term = searchTerm.toLowerCase();
+
+            // Parallel stream for faster code searching
+            List<JavaClass> matchingClasses = allClasses.parallelStream()
+                    .filter(cls -> {
+                        try {
+                            String code = cls.getCode();
+                            return code != null && code.toLowerCase().contains(term);
+                        } catch (Exception e) {
+                            return false;
+                        }
+                    })
+                    .collect(Collectors.toList());
+
+            Map<String, Object> result = paginationUtils.handlePagination(
+                ctx,
+                matchingClasses,
+                "class-list",
+                "classes",
+                JavaClass::getFullName
+            );
+            ctx.json(result);
+        } catch (PagniationException e) {
+            JadxAIMCPPluginError.handleError(ctx, "Internal error while generating pagination result for handleSearchClassesByKeyword: " + e.getMessage(), e, logger);
+        }catch (Exception e) {
+            JadxAIMCPPluginError.handleError(ctx, "Internal error occurred while trying to handle the search classes by keyword mcp request: " + e.getMessage(), e, logger);
+        }
+    }
+
     // -------------------------------- Helper methods ----------------------------
     
     /**
