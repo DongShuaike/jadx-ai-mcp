@@ -7,16 +7,35 @@ import jadx.api.JavaField;
 import jadx.api.JavaMethod;
 import jadx.gui.JadxWrapper;
 import jadx.gui.ui.MainWindow;
+import jadx.api.ResourceFile;
+import jadx.api.security.IJadxSecurity;
+import jadx.core.utils.android.AndroidManifestParser;
+import jadx.core.utils.android.AppAttribute;
+import jadx.core.utils.android.ApplicationParams;
+import jadx.core.utils.exceptions.JadxRuntimeException;
+import jadx.core.xmlgen.ResContainer;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.xml.sax.InputSource;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.swing.*;
 import java.awt.*;
-import java.util.ArrayList;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import java.io.ByteArrayInputStream;
+import java.io.StringReader;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
-import java.util.List;
+import java.util.ArrayList;
 import java.util.Map;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.io.InputStream;
+import java.util.EnumSet;
 
 import com.zin.jadxaimcp.utils.PaginationUtils;
 import com.zin.jadxaimcp.utils.PaginationUtils.PaginationException;
@@ -272,7 +291,7 @@ public class ClassRoutes {
     public void handleMainActivity(Context ctx) {
         try {
             JadxWrapper wrapper = mainWindow.getWrapper();
-            ResourceFile manifestRes = getManifestFile();
+            ResourceFile manifestRes = AndroidManifestParser.getAndroidManifest(mainWindow.getWrapper().getResources());
             if (manifestRes == null) {
                 JadxAIMCPPluginError.handleError(ctx, 404, "AndroidManifest.xml not found", logger);
                 return;
@@ -284,7 +303,7 @@ public class ClassRoutes {
                 wrapper.getArgs().getSecurity());
             
             if (!parser.isManifestFound()) {
-                JadxAIMCPPluginError.handleError(ctx, 404, "AndroidManifest.xml not found.");
+                JadxAIMCPPluginError.handleError(ctx, 404, "AndroidManifest.xml not found.", logger);
                 return;
             }
     
@@ -411,7 +430,6 @@ public class ClassRoutes {
             // Changed the getClasses() to getClassesWithInners()
             List<JavaClass> matchedClasses = wrapper.getDecompiler()
                     .getClassesWithInners()
-                    .getall()
                     .stream()
                     .filter(cls -> cls.getFullName().startsWith(packageName))
                     .collect(Collectors.toList());
@@ -430,7 +448,7 @@ public class ClassRoutes {
                 try {
                     String code = cls.getCode();
                     classInfo.put("content", code);
-                    logger.debug("JADX AI MCP: Successfully got code for " + cls.getFullname() + 
+                    logger.debug("JADX AI MCP: Successfully got code for " + cls.getFullName() + 
                                 " (length: " + code.length() + ")");
                 } catch (Exception e) {
                     logger.warn("Failed to decompile class " + cls.getFullName() + ": " + e.getMessage());
@@ -472,7 +490,7 @@ public class ClassRoutes {
     public void handleSearchClassesByKeyword(Context ctx) {
         String searchTerm = ctx.queryParam("search_term");
         if (searchTerm == null || searchTerm.isEmpty()) {
-            JadxAIMCPPluginError.handleError(ctx, 400, "Missing 'search_term' parameter.");
+            JadxAIMCPPluginError.handleError(ctx, 400, "Missing 'search_term' parameter.", logger);
             return;
         }
 
@@ -501,7 +519,7 @@ public class ClassRoutes {
                 JavaClass::getFullName
             );
             ctx.json(result);
-        } catch (PagniationException e) {
+        } catch (PaginationException e) {
             JadxAIMCPPluginError.handleError(ctx, "Internal error while generating pagination result for handleSearchClassesByKeyword: " + e.getMessage(), e, logger);
         }catch (Exception e) {
             JadxAIMCPPluginError.handleError(ctx, "Internal error occurred while trying to handle the search classes by keyword mcp request: " + e.getMessage(), e, logger);
@@ -594,5 +612,24 @@ public class ClassRoutes {
         }
         return null;
     }
+
+        /**
+         * @param String, IJadxSecurity
+         * @return Document
+         * 
+         * reusing jadx's secure xml parsing logic for parsing manifest xml file
+         * this code is taken from jadx - 
+         * https://github.com/skylot/jadx/blob/47647bbb9a9a3cd3150705e09cc1f84a5e9f0be6/jadx-core/src/main/java/jadx/core/utils/android/AndroidManifestParser.java#L214
+         */
+        private Document parseManifestXml(String xmlContent, IJadxSecurity security) {
+            try (InputStream xmlStream = new ByteArrayInputStream(xmlContent.getBytes(StandardCharsets.UTF_8))) {
+                Document doc = security.parseXml(xmlStream);
+                doc.getDocumentElement().normalize();
+                return doc;
+            } catch (Exception e) {
+                throw new JadxRuntimeException("Failed to parse AndroidManifest.xml", e);
+            }
+        }    
+    
 
 }

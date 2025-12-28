@@ -89,11 +89,11 @@ public class PluginServer {
         // Passing 'mainWindow' and 'paginationUtils' to them so they can do their work
         GeneralRoutes generalRoutes = new GeneralRoutes(mainWindow, port, this);
         ClassRoutes classRoutes = new ClassRoutes(mainWindow, paginationUtils);
-        SearchRoutes searchRoutes = new SearchRoutes(mainWindow, paginationUtils);
+        MethodRoutes methodRoutes = new MethodRoutes(mainWindow, paginationUtils);
         ResourceRoutes resourceRoutes = new ResourceRoutes(mainWindow);
         RefactoringRoutes refactoringRoutes = new RefactoringRoutes(mainWindow);
         DebugRoutes debugRoutes = new DebugRoutes(mainWindow);
-        XrefsRoutes analysisRoutes = new XrefsRoutes(mainWindow);
+        XrefsRoutes xrefsRoutes = new XrefsRoutes(mainWindow);
 
         // --- General & Health ---
         app.get("/health", generalRoutes::handleHealth);
@@ -113,13 +113,13 @@ public class PluginServer {
 
 
         // --- Methods ---
-        app.get("/method-by-name", searchRoutes::handleMethodByName);
-        app.get("/search-method", searchRoutes::handleSearchMethod);
+        app.get("/method-by-name", methodRoutes::handleMethodByName);
+        app.get("/search-method", methodRoutes::handleSearchMethod);
         
-        // --- Analysis (Xrefs) ---
-        app.get("/xrefs-to-class", analysisRoutes::handleXrefsToClass);
-        app.get("/xrefs-to-method", analysisRoutes::handleXrefsToMethod);
-        app.get("/xrefs-to-field", analysisRoutes::handleXrefsToField);
+        // --- Xrefs ---
+        app.get("/xrefs-to-class", xrefsRoutes::handleXrefsToClass);
+        app.get("/xrefs-to-method", xrefsRoutes::handleXrefsToMethod);
+        app.get("/xrefs-to-field", xrefsRoutes::handleXrefsToField);
 
         // --- Resources & Manifest ---
         app.get("/manifest", resourceRoutes::handleManifest);

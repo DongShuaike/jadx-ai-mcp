@@ -1,6 +1,6 @@
 package com.zin.jadxaimcp.server.routes;
 
-import io.javalin.http.context;
+import io.javalin.http.Context;
 
 import jadx.api.JavaClass;
 import jadx.api.ResourceFile;
@@ -30,9 +30,10 @@ import java.util.ArrayList;
 import java.util.Map;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.io.InputStream;
 
 import com.zin.jadxaimcp.utils.PaginationUtils;
-import com.zin.jadxaimcp.utils.PaginationUtils.PaginationExceptin;
+import com.zin.jadxaimcp.utils.PaginationUtils.PaginationException;
 import com.zin.jadxaimcp.utils.JadxAIMCPPluginError;
 
 public class ResourceRoutes {
@@ -42,7 +43,7 @@ public class ResourceRoutes {
 
     public ResourceRoutes(MainWindow mainWindow) {
         this.mainWindow = mainWindow;
-        this.paginaitonUtils = new PaginationUtils();
+        this.paginationUtils = new PaginationUtils();
     }
 
     /**
@@ -99,7 +100,7 @@ public class ResourceRoutes {
                         }
                     } else if ("res/values/strings.xml".equals(resFile.getDeobfName())) {
                         allStringEntries.add(Map.of("file", resFile.getDeobfName(), "content",
-                                                     resFile.loadContent().getText().getCodeStr()))
+                                                     resFile.loadContent().getText().getCodeStr()));
                     }
                 } catch (Exception e) {
                     logger.error("JADX AI MCP Plugin Error: Error processing resource file during handleStrings(): " + e.getMessage());
@@ -140,7 +141,7 @@ public class ResourceRoutes {
     public void handleGetResourceFile(Context ctx) {
         String fileName = ctx.queryParam("file_name");
         if (fileName == null || fileName.isEmpty()) {
-            JadxAIMCPPLuginError.handleError(ctx, 400, "Missing required 'file_name' parameter.");
+            JadxAIMCPPluginError.handleError(ctx, 400, "Missing required 'file_name' parameter.", logger);
             return;
         }
 
@@ -197,7 +198,7 @@ public class ResourceRoutes {
             for (ResourceFile resFile : resourceFiles) {
                 try {
                     if (resFile.getDeobfName().equals("resources.arsc")) {
-                        ResContainer container = resFile.loadcontent();
+                        ResContainer container = resFile.loadContent();
                         List<ResContainer> subFiles = container.getSubFiles();
                         for (ResContainer file : subFiles) {
                             resourceFileNames.add(file.getFileName());
@@ -216,7 +217,7 @@ public class ResourceRoutes {
 
             Map<String, Object> result = paginationUtils.handlePagination(
                 ctx,
-                resourcefileNames,
+                resourceFileNames,
                 "application-resources",
                 "files",
                 item -> item);

@@ -68,6 +68,7 @@ import java.util.function.Function;
 import com.zin.jadxaimcp.JadxAIMCPBanner;
 import com.zin.jadxaimcp.utils.PaginationUtils;
 import com.zin.jadxaimcp.utils.PaginationUtils.PaginationException;
+import com.zin.jadxaimcp.server.PluginServer;
 
 public class JadxAIMCP implements JadxPlugin {
     private MainWindow mainWindow;

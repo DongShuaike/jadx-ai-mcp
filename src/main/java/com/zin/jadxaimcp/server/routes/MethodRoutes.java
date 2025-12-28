@@ -1,6 +1,6 @@
 package com.zin.jadxaimcp.server.routes;
 
-import io.javalin.http.Contex;
+import io.javalin.http.Context;
 
 import jadx.api.JavaClass;
 import jadx.api.JavaMethod;
@@ -14,17 +14,18 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.HashMap;
 
 import com.zin.jadxaimcp.utils.PaginationUtils;
 import com.zin.jadxaimcp.utils.PaginationUtils.PaginationException;
 import com.zin.jadxaimcp.utils.JadxAIMCPPluginError;
 
 public class MethodRoutes {
-    private static final Logger logger = LoggerFactory.getLogger(SearchRoutes.class);
+    private static final Logger logger = LoggerFactory.getLogger(MethodRoutes.class);
     private final MainWindow mainWindow;
     private final PaginationUtils paginationUtils;
 
-    public SearchRoutes(MainWindow mainWindow, PaginationUtils paginationUtils) {
+    public MethodRoutes(MainWindow mainWindow, PaginationUtils paginationUtils) {
         this.mainWindow = mainWindow;
         this.paginationUtils = paginationUtils;
     }
@@ -48,7 +49,7 @@ public class MethodRoutes {
     public void handleMethodByName(Context ctx) {
         String className = ctx.queryParam("class_name");
 
-        String methodName = checkClassParam(ctx);
+        String methodName = validateMethodParam(ctx);
         if (methodName == null) return;
 
         try {
