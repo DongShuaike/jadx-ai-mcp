@@ -1,0 +1,640 @@
+package com.zin.jadxaimcp.server.routes;
+
+import io.javalin.http.Context;
+
+import jadx.api.JavaClass;
+import jadx.api.JavaField;
+import jadx.api.JavaMethod;
+import jadx.gui.JadxWrapper;
+import jadx.gui.ui.MainWindow;
+import jadx.api.ResourceFile;
+import jadx.api.security.IJadxSecurity;
+import jadx.core.utils.android.AndroidManifestParser;
+import jadx.core.utils.android.AppAttribute;
+import jadx.core.utils.android.ApplicationParams;
+import jadx.core.utils.exceptions.JadxRuntimeException;
+import jadx.core.xmlgen.ResContainer;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.xml.sax.InputSource;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.swing.*;
+import java.awt.*;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import java.io.ByteArrayInputStream;
+import java.io.StringReader;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.io.InputStream;
+import java.util.EnumSet;
+
+import com.zin.jadxaimcp.utils.PaginationUtils;
+import com.zin.jadxaimcp.utils.PaginationUtils.PaginationException;
+import com.zin.jadxaimcp.utils.JadxAIMCPPluginError;
+
+public class ClassRoutes {
+    private static final Logger logger = LoggerFactory.getLogger(ClassRoutes.class);
+    private final MainWindow mainWindow;
+    private final PaginationUtils paginationUtils;
+
+    public ClassRoutes(MainWindow mainWindow, PaginationUtils paginationUtils) {
+        this.mainWindow = mainWindow;
+        this.paginationUtils = paginationUtils;
+    }
+
+    // ------------------------------- Request Handlers --------------------------
+
+    /**
+     * @param   Context
+     * @return  void
+     * 
+     * This handler method handle the /current-class api call, 
+     * It return currently open/active/visible class code in UI in jadx.
+     * Using helper methods getSelectedTabTitle() and extractTextFromCurrentTab() it gets
+     * the title of UI component holding class code and then using that UI component extracts
+     * the text from  that UI component.
+     * 
+     * After getting the code it returns it.
+     */
+    public void handleCurrentClass(Context ctx) {
+        try {
+            String className = getSelectedTabTitle();
+            String code = extractTextFromCurrentTab();
+
+            Map<String, String> result = new HashMap<>();
+            result.put("name", className != null ? className.replace(".java", "") : "unknown");
+            result.put("type", "code/java");
+            result.put("content", code != null ? code : "");
+
+            ctx.json(result);
+        } catch (Exception e) {
+            JadxAIMCPPluginError.handleError(ctx, "Internal Error while trying to fetch current class class: " + e.getMessage(), e, logger);
+        }
+    }
+
+    /**
+     * @return
+     * @param Context
+     * 
+     * This routing method returns all classes decompiled from apk by jadx
+     * It first fetches the list of JavaClass classes using JadxWrapper.
+     * Then it combines this JavaClass list into Map and uses pagination utils to return the 
+     * details of all classes.
+     */
+    public void handleAllClasses(Context ctx) {
+        try {
+            JadxWrapper wrapper = mainWindow.getWrapper();
+            List<JavaClass> classes = wrapper.getIncludedClassesWithInners();
+
+            Map<String, Object> result = paginationUtils.handlePagination(
+                ctx,
+                classes,
+                "class-list",
+                "classes",
+                JavaClass::getFullName
+            );
+            ctx.json(result);
+        } catch (PaginationException e) {
+            JadxAIMCPPluginError.handleError(ctx, "Pagination Error: " + e.getMessage(), e, logger);
+        } catch (Exception e) {
+            JadxAIMCPPluginError.handleError(ctx, "Failed to load class list: " + e.getMessage(), e, logger);
+        }
+    }
+
+    /**
+     * @param Context
+     * @return
+     * 
+     * This routing method handles the /selected-text api call
+     * it first gets the currently selecte UI component using MainWindow's methods
+     * Then it find the text area from the currently active UI component, this text area
+     * holds the selected text.
+     * 
+     * From this text area, it fetches the selected text using getSelectedText() method and
+     * returns this using Map and ctx.
+     */
+    public void handleSelectedText(Context ctx) {
+        try {
+            Component selectedComponent = mainWindow.getTabbedPane().getSelectedComponent();
+            JTextArea textArea = findTextArea(selectedComponent);
+            String selectedText = textArea != null ? textArea.getSelectedText() : null;
+
+            Map<String, String> result = new HashMap<>();
+            result.put("selectedText", selectedText != null ? selectedText : "");
+            ctx.json(result);
+        } catch (Exception e) {
+            JadxAIMCPPluginError.handleError(ctx, "Internal error while trying to fetch selected text: " + e.getMessage(), e, logger);
+        }
+    }
+
+    /**
+     * @param Context
+     * @return void
+     * 
+     * This routing method handles the /class-source MCP tool call
+     * First it checks for request validity, the check is availability of
+     * 'class' parameter in http request, then it fetches the source code of the class
+     * by fetching the classes one by one and compares it with the requested class name, if 
+     * it matches returns the requested classe's code.
+     */
+    public void handleClassSource(Context ctx) {
+        String className = checkClassParam(ctx);
+        if (className == null) return;
+
+        // Removing this line to solve issue #37 as raised and contributed by
+        // github@ljt270864457
+        // This solves following bug -> Bug: Inner classes with $ symbol cannot be
+        // retrieved via /class-source endpoint
+        // className = className.replace('$', '.');
+
+        try {
+            JadxWrapper wrapper = mainWindow.getWrapper();
+            for (JavaClass cls : wrapper.getIncludedClassesWithInners()) {
+                if (cls.getFullName().equals(className)){
+                    ctx.result(cls.getCode());
+                    return;
+                }
+            }
+            ctx.status(404).json(Map.of("error", "Class " + className + " not found"));
+        } catch (Exception e) {
+            JadxAIMCPPluginError.handleError(ctx, "Internal error retrieving class source: " + e.getMessage(), e, logger);
+        }
+    }
+
+    /**
+     * @param Context
+     * @return void
+     * 
+     * This routing method handles the /methods-of-class endpoint.
+     * First it checks whether the 'class_name' parameter is present or not in http request
+     * then it iterates over each class present in jadx, and matches it for the `class_name`'s value
+     * Then once the requested class is found, it iterates over the methods of that class and gathers 
+     * their details. 
+     * 
+     * After gathering the details it returns the methods details.
+     */
+    public void handleMethodsOfClass(Context ctx) {
+        String className = checkClassParam(ctx);
+        if (className == null) return;
+
+        // Removing this line to solve issue #37 as raised and contributed by
+        // github@ljt270864457
+        // This solves following bug -> Bug: Inner classes with $ symbol cannot be
+        // retrieved via /methods-of-class endpoint
+        // className = className.replace('$', '.');
+
+        try {
+            JadxWrapper wrapper = mainWindow.getWrapper();
+            for (JavaClass cls : wrapper.getIncludedClassesWithInners()) {
+                if (cls.getFullName().equals(className)) {
+                    List<String> methods = new ArrayList<>();
+                    for (JavaMethod method : cls.getMethods()) {
+                        String fullMethodName = cls.getFullName() + "." + method.getName();
+                        String methodData = method.getAccessFlags() +
+                        " " + method.getReturnType() + 
+                        " " + method.getName() + 
+                        " " + method.getMethodNode() + 
+                        " " + fullMethodName;
+                        methods.add(methodData);
+                    }
+                    ctx.result(String.join("\n", methods));
+                    return;
+                }
+            }
+            JadxAIMCPPluginError.handleError(ctx, 404, "Class " + className + " not found.", logger);
+        } catch (Exception e) {
+            JadxAIMCPPluginError.handleError(ctx, "Internal error retrieving methods: " + e.getMessage(), e, logger);
+        }
+    }
+
+    /**
+     * @param Context
+     * @return void
+     * 
+     * This routing method handles the /fields-of-class mcp tool call
+     * After checking for presence of 'class_name' parameter, it finds the class with 
+     * 'class_name' name, after finding the requested class, it fetches the fields of class 
+     * starts gathering their details.
+     * 
+     * Then it return these details.
+     */
+    public void handleFieldsOfClass(Context ctx) {
+        String className = checkClassParam(ctx);
+        if (className == null) return;
+
+        try {
+            JadxWrapper wrapper = mainWindow.getWrapper();
+            for (JavaClass cls : wrapper.getIncludedClassesWithInners()) {
+                if (cls.getFullName().equals(className)) {
+                    List<String> fields = new ArrayList<>();
+                    for (JavaField field : cls.getFields()) {
+                        String fieldData = field.getAccessFlags() + 
+                        " " + field.getType() +
+                        " " + field.getName();
+                        fields.add(fieldData);
+                    }
+                    ctx.result(String.join("\n", fields));
+                    return;
+                }
+            }
+            JadxAIMCPPluginError.handleError(ctx, 404, "Class " + className + " not found.", logger);
+        } catch (Exception e) {
+            JadxAIMCPPluginError.handleError(ctx, "Internal error retrieving fields: " + e.getMessage(), e, logger);
+        }
+    }
+
+    /**
+     * @param Context
+     * @return void
+     * 
+     * This routing method handles the /smali-of-class mcp tool call
+     * After checking for availability of 'class' parameter in request, it finds that class,
+     * After finding that class it fetch smali of that class and returns it.
+     */
+    public void handleSmaliOfClass(Context ctx) {
+        String className = checkClassParam(ctx);
+        if (className == null) return;
+
+        try {
+            JadxWrapper wrapper = mainWindow.getWrapper();
+            for (JavaClass cls : wrapper.getIncludedClassesWithInners()) {
+                if (cls.getFullName().equals(className)) {
+                    ctx.result(cls.getSmali());
+                    return;
+                }
+            }
+            JadxAIMCPPluginError.handleError(ctx, 404, "Class " + className + " not found.", logger);
+        } catch (Exception e) {
+            JadxAIMCPPluginError.handleError(ctx, "Internal error retrieving smali: " + e.getMessage(), e, logger);
+        }
+    }
+
+    /**
+     * @return void
+     * @param Context
+     * 
+     * This routing method handle the /main-activity mcp tool call.
+     * 1. It gets the manifest file
+     * 2. It gets the manifest file parser
+     * 3. It parses the manifest file and fetches the name of the Main Activity class
+     * 4. It gets the Main Activity class code and returns it.
+     */
+    public void handleMainActivity(Context ctx) {
+        try {
+            JadxWrapper wrapper = mainWindow.getWrapper();
+            ResourceFile manifestRes = AndroidManifestParser.getAndroidManifest(mainWindow.getWrapper().getResources());
+            if (manifestRes == null) {
+                JadxAIMCPPluginError.handleError(ctx, 404, "AndroidManifest.xml not found", logger);
+                return;
+            }
+    
+            AndroidManifestParser parser = new AndroidManifestParser(
+                manifestRes,
+                EnumSet.of(AppAttribute.MAIN_ACTIVITY),
+                wrapper.getArgs().getSecurity());
+            
+            if (!parser.isManifestFound()) {
+                JadxAIMCPPluginError.handleError(ctx, 404, "AndroidManifest.xml not found.", logger);
+                return;
+            }
+    
+            ApplicationParams results = parser.parse();
+            if (results.getMainActivity() == null) {
+                JadxAIMCPPluginError.handleError(ctx, 404, "Failed to get main activity from manifest.", logger);
+                return;
+            }
+    
+            JavaClass mainActivityClass = results.getMainActivityJavaClass(wrapper.getDecompiler());
+            if (mainActivityClass == null) {
+                JadxAIMCPPluginError.handleError(ctx, 404, "Failed to get activity class: " + results.getApplication(), logger);
+                return;
+            }
+    
+            ctx.json(Map.of("name", mainActivityClass.getFullName(), "type", "code/java", "content", mainActivityClass.getCode()));
+        } catch (Exception e) {
+            JadxAIMCPPluginError.handleError(ctx, "Internal error occurred while trying to get the Main Activity class code: " + e.getMessage(), e, logger);
+        }
+    }
+
+    /**
+     * @return void
+     * @param Context
+     * 
+     * This method handles the /main-application-classes-names mcp tool call.
+     * 
+     * First goal is to get the package name, to get this first it gets the manifest file.
+     * Then parses it and get's the package name from it. Then get all the decompiled classes and
+     * filter them under the package name of main applcaiton. After filtering classes, build a dictionary
+     * of them and return them.
+     */
+    public void handleMainApplicationClassesNames(Context ctx) {
+        try {
+            JadxWrapper wrapper = mainWindow.getWrapper();
+            List<ResourceFile> resources = wrapper.getResources();
+
+            // get the manifest resource file
+            ResourceFile manifestRes = AndroidManifestParser.getAndroidManifest(resources);
+            if (manifestRes == null) {
+                JadxAIMCPPluginError.handleError(ctx, 404, "AndroidManifest.xml not found.", logger);
+                return;
+            }
+
+            // load manifest content and parse xml
+            String manifestXml = manifestRes.loadContent()
+                    .getText()
+                    .getCodeStr();
+            Document manifestDoc = parseManifestXml(manifestXml, wrapper.getArgs().getSecurity());
+
+            // Extract the package name from the <manifest> tag
+            Element manifestElement = (Element) manifestDoc.getElementsByTagName("manifest").item(0);
+            String packageName = manifestElement.getAttribute("package");
+
+            if (packageName.isEmpty()) {
+                JadxAIMCPPluginError.handleError(ctx, 404, "Package name not found in AndroiManifest.xml", logger);
+                return;
+            }
+
+            // Changed the getClasses() to getClassesWithInners()
+            List<JavaClass> matchedClasses = wrapper.getDecompiler()
+                .getClassesWithInners()
+                .stream()
+                .filter(cls -> cls.getFullName().startsWith(packageName))
+                .collect(Collectors.toList());
+
+            List<Map<String, Object>> classesInfo = new ArrayList<>();
+            for (JavaClass cls : matchedClasses) {
+                Map<String, Object> classInfo = new HashMap<>();
+                classInfo.put("name", cls.getFullName());
+                classesInfo.add(classInfo);
+            }
+            
+            Map<String, Object> result = new HashMap<>();
+            result.put("classes", classesInfo);
+            ctx.json(result);
+        } catch (Exception e) {
+            JadxAIMCPPluginError.handleError(ctx, "Internal error while trying to fetch all classes names: " + e.getMessage(), e, logger);
+        }
+    }
+
+    /**
+     * @param Context
+     * @return void
+     * 
+     * This routing method handles the /main-application-classes-code MCP tool call.
+     * 1. It retrieves the AndroidManifest.xml resource file
+     * 2. It parses the manifest XML to extract the application's package name
+     * 3. It filters all decompiled classes (including inner classes) that belong to the main package
+     * 4. For each matched class, it builds a map containing:
+     *    - Class full name
+     *    - Content type (code/java)
+     *    - Decompiled source code (or error message if decompilation fails)
+     * 5. It applies pagination to the collected class information
+     * 6. It returns the paginated result containing class details with their source code
+     * 
+     * Note: This method handles decompilation errors gracefully by including error messages
+     * in the content field instead of failing the entire request.
+     */
+    public void handleMainApplicationClassesCode(Context ctx) {
+        try {
+            JadxWrapper wrapper = mainWindow.getWrapper();
+            List<ResourceFile> resources = wrapper.getResources();
+
+            // get the manifest resource file
+            ResourceFile manifestRes = AndroidManifestParser.getAndroidManifest(resources);
+            if (manifestRes == null) {
+                JadxAIMCPPluginError.handleError(ctx, 404, "AndroidManifest.xml not found.", logger);
+                return;
+            }
+
+            // load manifest content and parse xml
+            String manifestXml = manifestRes.loadContent()
+                    .getText()
+                    .getCodeStr();
+            Document manifestDoc = parseManifestXml(manifestXml, wrapper.getArgs().getSecurity());
+
+            // Extract the package name from the <manifest> tag
+            Element manifestElement = (Element) manifestDoc.getElementsByTagName("manifest").item(0);
+            String packageName = manifestElement.getAttribute("package");
+
+            if (packageName.isEmpty()) {
+                JadxAIMCPPluginError.handleError(ctx, 404, "Package name not found in AndroiManifest.xml", logger);
+                return;
+            }
+
+            logger.info("JADX AI MCP: Package name: " + packageName);
+            // filter classes under this package
+            // Changed the getClasses() to getClassesWithInners()
+            List<JavaClass> matchedClasses = wrapper.getDecompiler()
+                    .getClassesWithInners()
+                    .stream()
+                    .filter(cls -> cls.getFullName().startsWith(packageName))
+                    .collect(Collectors.toList());
+            
+            logger.info("JADX AI MCP: Found " + matchedClasses.size() + " classes in package " + packageName);
+            logger.info("JADX AI MCP: Request params - offset: " + ctx.queryParam("offset") + 
+                        ", limit: " + ctx.queryParam("limit") + 
+                        ", count: " + ctx.queryParam("count"));
+            
+            // Build list of class info maps Before pagination
+            List<Map<String, Object>> classInfoList = new ArrayList<>();
+            for (JavaClass cls : matchedClasses) {
+                Map<String, Object> classInfo = new HashMap<>();
+                classInfo.put("name", cls.getFullName());
+                classInfo.put("type", "code/java");
+                try {
+                    String code = cls.getCode();
+                    classInfo.put("content", code);
+                    logger.debug("JADX AI MCP: Successfully got code for " + cls.getFullName() + 
+                                " (length: " + code.length() + ")");
+                } catch (Exception e) {
+                    logger.warn("Failed to decompile class " + cls.getFullName() + ": " + e.getMessage());
+                    classInfo.put("content", "// Error decompiling class: " + e.getMessage());
+                }
+                classInfoList.add(classInfo);
+            }
+
+            logger.info("JADX AI MCP: Built " + classInfoList.size() + " class info objects");
+
+            // Apply pagination to the pre-build list
+            Map<String, Object> result = paginationUtils.handlePagination(
+                ctx,
+                classInfoList,
+                "application-classes",
+                "classes",
+                item -> item); // Identity function since items are already transformed
+            
+            ctx.json(result);
+        } catch (PaginationException e) {
+            JadxAIMCPPluginError.handleError(ctx, "Internal error while generating pagination result for handleMainApplicationClassesCode: " + e.getMessage(), e, logger);
+        } catch (Exception e) {
+            JadxAIMCPPluginError.handleError(ctx, "Internal error occurred while retrieving main application classes' code: " + e.getMessage(), e, logger);
+        }
+    }
+
+    /**
+     * @return void
+     * @param Context
+     * 
+     * This method handles the call for /search-classes-by-keyword mcp tool.
+     * 
+     * First it checks if the request parameter 'search_term' is present or not.
+     * Then using JadxWrapper it gets list of all classes. Then using search term it
+     * filters all the classes matched with term and gets their code.
+     * 
+     * After this it returns the result.
+     */
+    public void handleSearchClassesByKeyword(Context ctx) {
+        String searchTerm = ctx.queryParam("search_term");
+        if (searchTerm == null || searchTerm.isEmpty()) {
+            JadxAIMCPPluginError.handleError(ctx, 400, "Missing 'search_term' parameter.", logger);
+            return;
+        }
+
+        try {
+            JadxWrapper wrapper = mainWindow.getWrapper();
+            List<JavaClass> allClasses = wrapper.getIncludedClassesWithInners();
+            String term = searchTerm.toLowerCase();
+
+            // Parallel stream for faster code searching
+            List<JavaClass> matchingClasses = allClasses.parallelStream()
+                    .filter(cls -> {
+                        try {
+                            String code = cls.getCode();
+                            return code != null && code.toLowerCase().contains(term);
+                        } catch (Exception e) {
+                            return false;
+                        }
+                    })
+                    .collect(Collectors.toList());
+
+            Map<String, Object> result = paginationUtils.handlePagination(
+                ctx,
+                matchingClasses,
+                "class-list",
+                "classes",
+                JavaClass::getFullName
+            );
+            ctx.json(result);
+        } catch (PaginationException e) {
+            JadxAIMCPPluginError.handleError(ctx, "Internal error while generating pagination result for handleSearchClassesByKeyword: " + e.getMessage(), e, logger);
+        }catch (Exception e) {
+            JadxAIMCPPluginError.handleError(ctx, "Internal error occurred while trying to handle the search classes by keyword mcp request: " + e.getMessage(), e, logger);
+        }
+    }
+
+    // -------------------------------- Helper methods ----------------------------
+    
+    /**
+     * @param Context
+     * @return String
+     * 
+     * Checks if the HTTP request contains the 'class_name' param or not, if yes then returns it,
+     * else returns null
+     */
+    private String checkClassParam(Context ctx) {
+        String className = ctx.queryParam("class_name");
+        if (className == null || className.isEmpty()) {
+            JadxAIMCPPluginError.handleError(ctx, 400, "Missing required parameter 'class_name'", logger);
+            return null;
+        }
+        return className;
+    }
+
+    /**
+     * @param
+     * @return String
+     * 
+     * This helper method extracts the selected(currently open class's UI tab)'s
+     * title. First it checks whether the mainWindow is null or not if it is null then
+     * return null.
+     * 
+     * Then first it gets's the index of TabbedPane if it is -1 then it is not valid/ there
+     * is no selected class UI. Else it extracts title of tab using it's index and returns it 
+     * as String.
+     */
+    private String getSelectedTabTitle() {
+        if (mainWindow == null || mainWindow.getTabbedPane() == null) return null;
+        
+        int index = mainWindow.getTabbedPane().getSelectedIndex();
+        if (index != -1) {
+            return mainWindow.getTabbedPane().getTitleAt(index);
+        }
+
+        return null;
+    }
+
+    /**
+     * @param 
+     * @return String
+     * 
+     * This helper method extracts the text from current tab (active tab in UI) in other
+     * words, UI where we see class code.
+     * 
+     * After checking for mainWindow's state for `null`, it first creates the Component object
+     * to store the current tab ( UI where we see class code ), Then using findTextArea() it 
+     * extracts all text (class code) from it and return it via textArea.getText() method after 
+     * checking for null.
+     */
+    private String extractTextFromCurrentTab() {
+        if (mainWindow == null) return null;
+
+        Component component = mainWindow.getTabbedPane().getSelectedComponent();
+        JTextArea textArea = findTextArea(component);
+
+        return textArea != null ? textArea.getText() : null;
+    }
+
+    /**
+     * @return JTextArea
+     * @param Component
+     * Recursively searches for a JTextArea (or compatible component) inside the given container.
+     * 
+     * This helper method is used in extractTextFromCurrentTab() method. It takes the UI component
+     * and recursively check if there is any JTextArea in that UI compoenet, if yes then return it
+     * else return null
+     */
+    private JTextArea findTextArea(Component component) {
+        if (component instanceof JTextArea) {
+            return (JTextArea) component;
+        }
+
+        if (component instanceof Container) {
+            for (Component child : ((Container) component).getComponents()) {
+                JTextArea found = findTextArea(child);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
+    }
+
+        /**
+         * @param String, IJadxSecurity
+         * @return Document
+         * 
+         * reusing jadx's secure xml parsing logic for parsing manifest xml file
+         * this code is taken from jadx - 
+         * https://github.com/skylot/jadx/blob/47647bbb9a9a3cd3150705e09cc1f84a5e9f0be6/jadx-core/src/main/java/jadx/core/utils/android/AndroidManifestParser.java#L214
+         */
+        private Document parseManifestXml(String xmlContent, IJadxSecurity security) {
+            try (InputStream xmlStream = new ByteArrayInputStream(xmlContent.getBytes(StandardCharsets.UTF_8))) {
+                Document doc = security.parseXml(xmlStream);
+                doc.getDocumentElement().normalize();
+                return doc;
+            } catch (Exception e) {
+                throw new JadxRuntimeException("Failed to parse AndroidManifest.xml", e);
+            }
+        }    
+    
+
+}
