@@ -102,23 +102,10 @@ Thanks to these wonderful people for their contributions ⭐
 
 </div>
 
-### Announcement
-🚧 🚧 🏗️ Refactoring Mode: ON 🏗️🚧 🚧
+![jadx-ai-banner.png](docs/assets/img.png) Image generated using AI tools.
 
-Hey everyone, quick update for the JADX AI MCP!
-
-I’ve made the decision to temporarily pause the development of new features and MCP tools. But for a very good reason: We are going modular.
-
-As the project has grown, so has the complexity. To ensure the plugin remains scalable and maintainable for the long haul, I am currently performing a complete architectural overhaul of the codebase. We are moving away from the initial monolithic design to a robust, modular structure (separating core server logic, route handlers, and UI components).
-
-What does this mean for you?
-🛑 New Features: Paused until the refactor is complete.
-✅ Maintenance: Bug fixes and critical optimizations will continue as normal. If something breaks, I’ll fix it.
-
-The Future: Once this foundation is set, adding new tools/improvements in existing tools and features will be faster and more stable than ever.
-
-
-<!-- ![jadx-ai-banner.png](docs/assets/img.png) Image generated using AI tools. -->
+#### Read The Docs
+ - Read The Docs is now live: https://jadx-ai-mcp.readthedocs.io/en/latest/
 
 ---
 
