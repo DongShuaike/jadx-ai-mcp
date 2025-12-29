@@ -6,15 +6,15 @@ Solutions for common issues encountered when using JADX-AI-MCP.
 
 Before diving deep, check these basics:
 
-1.  ✅ **JADX Version**: Is it 1.5.1+? (`jadx --version`)
-2.  ✅ **Plugin Installed**: Is `jadx-ai-mcp.jar` in `~/.jadx/plugins/`?
-3.  ✅ **Server Running**: Is the Python server process active?
-4.  ✅ **Port Match**: Does server `--jadx-port` match plugin config?
-5.  ✅ **APK Loaded**: Is a file actually open in JADX?
+1.  **JADX Version**: Is it 1.5.1+? (`jadx --version`)
+2.  **Plugin Installed**: Is `jadx-ai-mcp.jar` in `~/.jadx/plugins/`?
+3.  **Server Running**: Is the Python server process active?
+4.  **Port Match**: Does server `--jadx-port` match plugin config?
+5.  **APK Loaded**: Is a file actually open in JADX?
 
 ---
 
-## 🔌 Connection Issues
+## Connection Issues
 
 ### "Connection Refused" / Server Won't Start
 **Error**: `httpx.ConnectError: [Errno 111] Connection refused`
@@ -47,7 +47,7 @@ Before diving deep, check these basics:
 
 ---
 
-## 🐍 Python Server Issues
+## Python Server Issues
 
 ### "Module Not Found"
 **Error**: `ModuleNotFoundError: No module named 'fastmcp'`
@@ -69,7 +69,7 @@ python3 --version
 
 ---
 
-## 🧩 Plugin Issues
+## Plugin Issues
 
 ### Plugin Not Appearing in Menu
 **Cause**: Incompatible JADX version or corrupt JAR.
@@ -87,7 +87,7 @@ The plugin requires an active project context. Open an APK file in JADX-GUI befo
 
 ---
 
-## 🤖 LLM Client Issues
+## LLM Client Issues
 
 ### Tools Not Showing in Claude
 **Cause**: Config file syntax error or path issue.
@@ -109,26 +109,9 @@ The plugin requires an active project context. Open an APK file in JADX-GUI befo
 
 ---
 
-## 🐛 Debugging Mode
-
-### Enable Plugin Debug Logs
-Run JADX with debug flag:
-```bash
-jadx-gui --log-level DEBUG
-```
-
-### Enable Server Debug Logs
-Set log level in `jadx_mcp_server.py`:
-```python
-logger.setLevel(logging.DEBUG)
-```
-
----
-
-## 🆘 Getting Help
+## Getting Help
 
 If you're still stuck:
 
 1.  Gather logs (JADX + Python console).
 2.  Open an issue on [GitHub](https://github.com/zinja-coder/jadx-ai-mcp/issues).
-3.  Join our [Discord Community](https://discord.gg/jadx-ai-mcp).

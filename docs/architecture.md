@@ -2,7 +2,7 @@
 
 Deep dive into JADX-AI-MCP technical design.
 
-## 🏗️ High-Level Design
+## High-Level Design
 
 The system follows a **3-Tier Architecture**:
 
@@ -32,7 +32,7 @@ block-beta
 
 ---
 
-## 🧵 Threading Model
+## Threading Model
 
 ### Python Server (AsyncIO)
 - **Single-threaded Event Loop**: Uses `asyncio` for non-blocking I/O
@@ -47,17 +47,17 @@ block-beta
 **EDT Pattern:**
 ```java
 // Wrong: Direct access from worker thread
-String code = javaClass.getCode(); // ❌ ConcurrentModificationException
+String code = javaClass.getCode(); // ConcurrentModificationException
 
 // Correct: Wrap in invokeLater
 SwingUtilities.invokeLater(() -> {
-    String code = javaClass.getCode(); // ✅ Safe
+    String code = javaClass.getCode(); // Safe
 });
 ```
 
 ---
 
-## 💾 State Management
+## State Management
 
 ### Plugin State (Persistent)
 - **Port Configuration**: Stored in `Java Preferences` node `com.zin.jadxaimcp`
@@ -82,7 +82,7 @@ SwingUtilities.invokeLater(() -> {
 
 ---
 
-## ⚡ Performance Optimization
+## Performance Optimization
 
 ### Pagination Strategy
 Large APKs can have 10,000+ classes. Returning all at once causes:
@@ -101,7 +101,7 @@ Large APKs can have 10,000+ classes. Returning all at once causes:
 
 ---
 
-## 🧩 Protocol Specifications
+## Protocol Specifications
 
 ### MCP Protocol (JSON-RPC 2.0)
 - **Tools**: Exposed as MCP tools
@@ -119,7 +119,7 @@ Large APKs can have 10,000+ classes. Returning all at once causes:
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Component | Technology | Version | License |
 |-----------|------------|---------|---------|

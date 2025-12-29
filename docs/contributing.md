@@ -2,7 +2,7 @@
 
 We welcome contributions! Help us make Android reverse engineering smarter.
 
-## 🛠️ Development Setup
+## Development Setup
 
 ### Prerequisites
 - JDK 11+
@@ -39,7 +39,7 @@ uv pip install -e .
 
 ---
 
-## 🧪 Testing
+## Testing
 
 ### Running Tests
 ```bash
@@ -57,7 +57,7 @@ pytest tests/
 
 ---
 
-## 📝 Coding Standards
+## Coding Standards
 
 ### Java
 - **Style**: Google Java Style
@@ -71,17 +71,3 @@ pytest tests/
 - **Docstrings**: Google style
 
 ---
-
-## 🚀 Release Process
-
-1.  Bump version in `build.gradle` and `jadx_mcp_server.py`.
-2.  Update `CHANGELOG.md`.
-3.  Create PR.
-4.  On merge, GitHub Action builds and publishes release.
-
----
-
-## 🤝 Community
-
-- **Discord**: Dev channel
-- **Discussions**: Feature requests & architecture planning

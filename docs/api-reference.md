@@ -2,7 +2,7 @@
 
 Comprehensive guide to all JADX-AI-MCP tools with detailed usage examples.
 
-## 📚 Table of Contents
+## Table of Contents
 
 - [Class Analysis](#class-analysis)
 - [Search Capabilities](#search-capabilities)

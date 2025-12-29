@@ -2,7 +2,7 @@
 
 Welcome to the comprehensive documentation for **JADX-AI-MCP**, an AI-powered Android reverse engineering toolkit that bridges JADX decompiler with Large Language Models through the Model Context Protocol.
 
-## 🎯 What is JADX-AI-MCP?
+## What is JADX-AI-MCP?
 
 JADX-AI-MCP is a sophisticated reverse engineering solution consisting of two tightly integrated components:
 
@@ -11,7 +11,7 @@ JADX-AI-MCP is a sophisticated reverse engineering solution consisting of two ti
 
 Together, these components enable real-time, AI-assisted Android application analysis, vulnerability detection, and code understanding.
 
-## 🌟 Key Features
+## Key Features
 
 ### Advanced Analysis Capabilities
 - **Real-time Code Review**: AI analyzes decompiled code as you navigate
@@ -31,7 +31,7 @@ Together, these components enable real-time, AI-assisted Android application ana
 - **Pagination Support**: Efficient handling of large APKs (10,000+ classes)
 - **Multi-Client Support**: Works with Claude, Cherry Studio, LM Studio
 
-## 📊 Architecture Overview
+## Architecture Overview
 
 ```mermaid
 graph TB
@@ -61,7 +61,7 @@ graph TB
     J -->|Response| F
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -113,26 +113,6 @@ See [Installation Guide](installation.md) for detailed instructions.
 - **[FAQ](faq.md)** - Frequently asked questions
 - **[Contributing](contributing.md)** - Development guidelines
 
-## 🎓 Learning Path
-
-### Beginner (Day 1)
-1. Complete installation
-2. Load sample APK
-3. Try basic prompts: "Fetch current class and explain it"
-4. Explore manifest and resources
-
-### Intermediate (Week 1)
-1. Learn search and xref tools
-2. Practice systematic analysis workflows
-3. Understand pagination for large APKs
-4. Try refactoring obfuscated code
-
-### Advanced (Month 1)
-1. Integrate with debugger
-2. Build custom analysis workflows
-3. Automate vulnerability scanning
-4. Contribute new tools/features
-
 ## 🔧 Tool Categories
 
 ### Class Analysis Tools (10 tools)
@@ -172,23 +152,13 @@ Runtime analysis during JADX debugging sessions.
 - **No Data Collection**: No telemetry or usage tracking
 - **Open Source**: Fully auditable codebase
 
-## 📈 Performance Characteristics
-
-| Operation | Time (Small APK) | Time (Large APK) | Notes |
-|-----------|-----------------|------------------|-------|
-| Get class source | <100ms | <500ms | Cached by JADX |
-| Search classes | 1-2s | 5-10s | Depends on term |
-| Get all classes | <1s | 2-5s | Use pagination |
-| Xref analysis | <500ms | 2-3s | Pagination recommended |
-
-## 🌐 Supported Platforms
+## Supported Platforms
 
 | Platform | Plugin Support | Server Support | Status |
 |----------|---------------|----------------|--------|
 | Linux | ✅ Full | ✅ Full | Tested |
 | macOS | ✅ Full | ✅ Full | Tested |
 | Windows | ✅ Full | ✅ Full | Tested |
-| WSL2 | ✅ Full | ✅ Full | Community tested |
 
 ## 🤝 Community & Support
 
@@ -201,13 +171,13 @@ Runtime analysis during JADX debugging sessions.
 
 Apache License 2.0 - See [LICENSE](license.md)
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - **JADX Project**: [@skylot](https://github.com/skylot) - Amazing decompiler
 - **Anthropic**: Model Context Protocol development
 - **FastMCP**: [@jlowin](https://github.com/jlowin) - Python MCP framework
 
-## 🎯 Next Steps
+## Next Steps
 
 1. **New Users**: Start with [Installation](installation.md)
 2. **Quick Demo**: See [Examples](examples.md)
@@ -216,4 +186,4 @@ Apache License 2.0 - See [LICENSE](license.md)
 
 ---
 
-**Current Version**: 5.0.0 | **Last Updated**: December 2025
+**Current Version**: 6.0.0 | **Last Updated**: January 2026
