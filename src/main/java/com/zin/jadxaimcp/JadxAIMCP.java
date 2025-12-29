@@ -27,6 +27,7 @@ import com.zin.jadxaimcp.utils.JadxAIMCPBanner;
 import com.zin.jadxaimcp.utils.PaginationUtils;
 import com.zin.jadxaimcp.utils.PaginationUtils.PaginationException;
 import com.zin.jadxaimcp.ui.PluginMenu;
+import com.zin.jadxaimcp.server.PluginServer;
 
 public class JadxAIMCP implements JadxPlugin {
     public static final String PLUGIN_ID = "jadx-ai-mcp";
