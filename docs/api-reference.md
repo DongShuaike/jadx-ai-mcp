@@ -1,48 +1,203 @@
-# API reference
+# Enhanced API Reference
 
-This reference documents the MCP tools exposed by `jadx_mcp_server.py`.
+Comprehensive guide to all JADX-AI-MCP tools with detailed usage examples.
 
-## Class & code tools
+## 📚 Table of Contents
 
-- `fetch_current_class()` – Selected class + decompiled source.
-- `get_selected_text()` – Current editor selection.
-- `get_all_classes(offset=0, count=0)` – List classes (paginated).
-- `get_class_source(class_name)` – Decompiled Java for class.
-- `get_methods_of_class(class_name)` – Method names.
-- `get_fields_of_class(class_name)` – Field names.
-- `get_smali_of_class(class_name)` – Smali for class.
-- `get_main_activity_class()` – Launcher activity.
-- `get_main_application_classes_names()` – Main package classes.
-- `get_main_application_classes_code(offset=0, count=0)` – Main package sources (paginated).
+- [Class Analysis](#class-analysis)
+- [Search Capabilities](#search-capabilities)
+- [Resource Analysis](#resource-analysis)
+- [Cross-Reference Analysis](#cross-reference-analysis)
+- [Refactoring](#refactoring)
+- [Debugging](#debugging)
 
-## Search tools
+---
 
-- `get_method_by_name(class_name, method_name)`
-- `search_method_by_name(method_name)`
-- `search_classes_by_keyword(search_term, offset=0, count=20)`
+## Class Analysis
 
-## Resource tools
+Tools for inspecting decompiled Java code.
 
-- `get_android_manifest()`
-- `get_strings(offset=0, count=0)`
-- `get_all_resource_file_names(offset=0, count=0)`
-- `get_resource_file(resource_name)`
+### `fetch_current_class()`
 
-## Xrefs tools
+Fetches the currently selected class in JADX-GUI.
 
-- `get_xrefs_to_class(class_name, offset=0, count=20)`
-- `get_xrefs_to_method(class_name, method_name, offset=0, count=20)`
-- `get_xrefs_to_field(class_name, field_name, offset=0, count=20)`
+**Parameters:** None
 
-## Refactor tools
+**Returns:**
+```json
+{
+  "className": "com.example.MainActivity",
+  "package": "com.example",
+  "source": "public class MainActivity...",
+  "type": "class"
+}
+```
 
-- `rename_class(class_name, new_name)`
-- `rename_method(method_name, new_name)`
-- `rename_field(class_name, field_name, new_name)`
-- `rename_package(old_package_name, new_package_name)`
+**Use Case:** Quick context for "Explain this class" prompts.
 
-## Debug tools
+---
 
-- `debug_get_stack_frames()`
-- `debug_get_threads()`
-- `debug_get_variables()`
+### `get_all_classes(offset: int = 0, count: int = 0)`
+
+Lists all classes in the APK.
+
+**Parameters:**
+- `offset` (int): Starting index
+- `count` (int): Number to return (0 = all)
+
+**Example:**
+```python
+# Get first 100 classes
+classes = await get_all_classes(offset=0, count=100)
+print(f"Total classes: {classes['pagination']['total']}")
+```
+
+**Best Practice:** Always use pagination for production APKs to avoid timeouts.
+
+---
+
+### `get_class_source(class_name: str)`
+
+Gets full source code for a specific class.
+
+**Parameters:**
+- `class_name` (str): Fully qualified name
+
+**Example:**
+```python
+source = await get_class_source("com.example.crypto.AES")
+```
+
+**Note:** Returns cached source if already decompiled.
+
+---
+
+## Search Capabilities
+
+### `search_classes_by_keyword(search_term: str, offset: int = 0, count: int = 20)`
+
+Full-text search across all code.
+
+**Parameters:**
+- `search_term` (str): Text to find
+- `offset` (int): Start index
+- `count` (int): Max results
+
+**Example:**
+```python
+# Find hardcoded passwords
+results = await search_classes_by_keyword("password", count=50)
+
+for res in results['items']:
+    print(f"Found in {res['className']}: {res['preview']}")
+```
+
+---
+
+### `search_method_by_name(method_name: str)`
+
+Finds methods matching a name pattern.
+
+**Parameters:**
+- `method_name` (str): Name or partial signature
+
+**Example:**
+```python
+# Find encryption methods
+methods = await search_method_by_name("encrypt")
+```
+
+---
+
+## Resource Analysis
+
+### `get_android_manifest()`
+
+Parses AndroidManifest.xml.
+
+**Returns:**
+- Package name
+- Version info
+- Permissions
+- Activities/Services/Receivers/Providers
+- Raw XML
+
+**Use Case:** Security auditing permissions and exported components.
+
+---
+
+### `get_strings(offset: int = 0, count: int = 0)`
+
+Extracts strings from `res/values/strings.xml`.
+
+**Parameters:**
+- `offset` (int): Start index
+- `count` (int): Max strings
+
+**Use Case:** Finding API keys, URLs, or hidden messages.
+
+---
+
+## Cross-Reference Analysis
+
+### `get_xrefs_to_method(class_name: str, method_name: str, ...)`
+
+Finds all callers of a method.
+
+**Example:**
+```python
+# Who calls login()?
+callers = await get_xrefs_to_method(
+    "com.example.Auth", 
+    "login",
+    count=100
+)
+```
+
+**Features:**
+- Includes direct calls
+- Includes interface implementations
+- Includes super calls
+
+---
+
+## Refactoring
+
+### `rename_class(class_name: str, new_name: str)`
+
+Renames class and updates references.
+
+**Example:**
+```python
+# Deobfuscate
+await rename_class("a.b.c", "CryptoHelper")
+```
+
+**Warning:** Affects multiple files. Use carefully.
+
+---
+
+## Debugging
+
+### `debug_get_stack_frames()`
+
+Gets current call stack.
+
+**Requirements:**
+- Debugger active
+- Process suspended
+
+**Returns:**
+- List of stack frames (class, method, line)
+
+---
+
+### `debug_get_variables()`
+
+Gets local variables and fields.
+
+**Returns:**
+- Locals (name, type, value)
+- Fields (name, type, value)
+
+**Security Note:** Values may contain sensitive data (passwords, keys).

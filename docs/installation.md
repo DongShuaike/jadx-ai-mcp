@@ -1,59 +1,146 @@
-# Installation
+# Installation Guide
 
-## 1) Install the JADX plugin
+This guide covers the complete installation process for JADX-AI-MCP.
 
-### Option A: Install via JADX CLI (recommended)
+## Prerequisites
+
+### System Requirements
+
+- **Operating System**: Windows, macOS, or Linux
+- **Java**: Version 11 or higher
+- **Python**: Version 3.10 or higher
+- **JADX**: Version 1.5.1+ (r2333+)
+
+### Check Prerequisites
+
+```bash
+# Check Java version
+java -version
+
+# Check Python version
+python --version
+
+# Check JADX version
+jadx --version
+```
+
+## Installation Methods
+
+### Method 1: One-Line Installation (Recommended)
+
+The easiest way to install the plugin:
 
 ```bash
 jadx plugins --install "github:zinja-coder:jadx-ai-mcp"
 ```
 
-### Option B: Install via JADX-GUI
+This command automatically downloads and installs the latest version of the plugin.
 
-1. Download the latest `jadx-ai-mcp-<version>.jar` from GitHub releases.
-2. In JADX-GUI: Plugins → Install plugin → select the jar.
-3. Restart JADX-GUI.
+### Method 2: Manual Installation via JADX-GUI
 
-## 2) Set up the MCP server (Python)
+1. Download the latest release from [GitHub Releases](https://github.com/zinja-coder/jadx-ai-mcp/releases)
+2. Download both:
+   - `jadx-ai-mcp-<version>.jar`
+   - `jadx-mcp-server-<version>.zip`
 
-### Using uv (recommended)
+3. Open JADX-GUI
+4. Navigate to: **Plugins → Install Plugin**
+5. Select the downloaded `.jar` file
+6. Restart JADX-GUI
+
+![Plugin Installation](assets/img_1231.png)
+
+### Method 3: Build from Source
 
 ```bash
-# Install uv
+# Clone the repository
+git clone https://github.com/zinja-coder/jadx-ai-mcp.git
+cd jadx-ai-mcp
+
+# Build the plugin
+./gradlew build
+
+# The built JAR will be in build/libs/
+# Install it using Method 2 above
+```
+
+## MCP Server Setup
+
+### Step 1: Extract Server Files
+
+```bash
+# Download server package
+wget https://github.com/zinja-coder/jadx-ai-mcp/releases/latest/download/jadx-mcp-server.zip
+
+# Extract
+unzip jadx-mcp-server.zip
+cd jadx-mcp-server
+```
+
+### Step 2: Install UV Package Manager
+
+UV is a fast Python package manager used by this project:
+
+```bash
+# Linux/macOS
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Run the server
-cd /path/to/jadx-mcp-server
-uv run jadx_mcp_server.py
+# Windows (PowerShell)
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
-### Using pip/venv (fallback)
+### Step 3: Verify Installation
 
 ```bash
-cd /path/to/jadx-mcp-server
-python3 -m venv .venv
-source .venv/bin/activate
-pip install httpx fastmcp
-python3 jadx_mcp_server.py
+# Check UV installation
+uv --version
+
+# Test server (should show usage info)
+uv run jadx_mcp_server.py --help
 ```
 
-## 3) Configure Claude Desktop (example)
+### Optional: Create Virtual Environment
 
-Config file locations:
-- Linux: `~/.config/Claude/claude_desktop_config.json`
-- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
-- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+```bash
+# Create venv (optional but recommended for troubleshooting)
+uv venv
+source .venv/bin/activate  # Linux/macOS
+# OR
+.venv\Scripts\activate  # Windows
 
-Example config:
+# Install dependencies manually
+uv pip install httpx fastmcp
+```
+
+## LLM Client Configuration
+
+### Claude Desktop
+
+#### Linux Configuration
+
+```bash
+# Edit config file
+nano ~/.config/Claude/claude_desktop_config.json
+```
+
+#### Windows Configuration
+
+Location: `%APPDATA%\Claude\claude_desktop_config.json`
+
+#### macOS Configuration
+
+Location: `~/Library/Application Support/Claude/claude_desktop_config.json`
+
+#### Configuration Content
 
 ```json
 {
   "mcpServers": {
     "jadx-mcp-server": {
-      "command": "/absolute/path/to/uv",
+      "command": "/path/to/uv",
       "args": [
         "--directory",
-        "/absolute/path/to/jadx-mcp-server",
+        "/path/to/jadx-mcp-server/",
         "run",
         "jadx_mcp_server.py"
       ]
@@ -62,37 +149,145 @@ Example config:
 }
 ```
 
-or you can install the jadx_mcp_server directly as executable directly using below command:
+**Important**: Replace paths with absolute paths on your system.
 
-```
-uv tool install git+https://github.com/zinja-coder/jadx-mcp-server
-```
+#### Find UV Path
 
-and then you can just provide `jadx_mcp_server` in `command` section of mcp configuration.
-
-## 4) Use Cherry Studio
-
-If you want to configure the MCP tool in Cherry Studio, you can refer to the following configuration.
-- Type: stdio
-- command: uv
-- argument:
 ```bash
---directory
-path/to/jadx-mcp-server
-run
-jadx_mcp_server.py
+# Linux/macOS
+which uv
+
+# Windows
+where uv
 ```
-- `path/to/jadx-mcp-server` with the absolute path to where you cloned this
-repository
 
-## 5) Using LMStudio
+### Alternative: Install as UV Tool
 
-You can also use JADX AI MCP Server with LM Studio by configuring it's mcp.json file. Here's the video guide.
+```bash
+# Install globally as a UV tool
+uv tool install git+https://github.com/zinja-coder/jadx-mcp-server
 
-https://github.com/user-attachments/assets/b4a6b280-5aa9-4e76-ac72-a0abec73b809
+# Then use simplified config
+{
+  "mcpServers": {
+    "jadx-mcp-server": {
+      "command": "jadx_mcp_server"
+    }
+  }
+}
+```
 
-## 6) Verify
+### Cherry Studio Configuration
 
-1. Open JADX-GUI and load an APK.
-2. Ensure the plugin server is running (Plugins → JADX-AI-MCP → Server Status).
-3. In your LLM client, confirm MCP tools are visible.
+1. Open Cherry Studio settings
+2. Navigate to MCP configuration
+3. Add new MCP server:
+   - **Type**: stdio
+   - **Command**: `uv`
+   - **Arguments**:
+     ```
+     --directory
+     /path/to/jadx-mcp-server
+     run
+     jadx_mcp_server.py
+     ```
+
+### LM Studio Configuration
+
+1. Open LM Studio
+2. Navigate to MCP settings
+3. Edit `mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "jadx-mcp-server": {
+      "command": "/path/to/uv",
+      "args": [
+        "--directory",
+        "/path/to/jadx-mcp-server",
+        "run",
+        "jadx_mcp_server.py"
+      ]
+    }
+  }
+}
+```
+
+## HTTP Stream Mode (Optional)
+
+Run the server in HTTP mode for remote access:
+
+```bash
+# Default HTTP mode (port 8651)
+uv run jadx_mcp_server.py --http
+
+# Custom port
+uv run jadx_mcp_server.py --http --port 9999
+```
+
+## Custom Port Configuration
+
+### Plugin Port Configuration
+
+1. Open JADX-GUI with the plugin installed
+2. Navigate to: **Plugins → JADX-AI-MCP → Configure Port**
+3. Enter desired port (default: 8650)
+4. Click **Restart Server**
+
+![Port Configuration](assets/port-config.png)
+
+### Server Port Configuration
+
+When using custom plugin port:
+
+```bash
+# Connect to plugin on custom port
+uv run jadx_mcp_server.py --jadx-port 8652
+```
+
+Update LLM client configuration:
+
+```json
+{
+  "mcpServers": {
+    "jadx-mcp-server": {
+      "command": "/path/to/uv",
+      "args": [
+        "--directory",
+        "/path/to/jadx-mcp-server/",
+        "run",
+        "jadx_mcp_server.py",
+        "--jadx-port",
+        "8652"
+      ]
+    }
+  }
+}
+```
+
+## Verification
+
+### 1. Check Plugin Status
+
+1. Open JADX-GUI
+2. Load any APK file
+3. Check: **Plugins → JADX-AI-MCP → Server Status**
+4. Should show: "Server Running on port 8650"
+
+### 2. Check MCP Server Connection
+
+1. Open your LLM client (Claude/Cherry Studio/LM Studio)
+2. Look for hammer icon (🔨) or MCP tools indicator
+3. Click and verify "jadx-mcp-server" is listed
+4. Should show ~30 available tools
+
+### 3. Test Basic Functionality
+
+Run this prompt in your LLM client:
+
+```
+List all available JADX MCP tools
+```
+
+Expected response: List of 30+ tools including `fetch_current_class`, `get_android_manifest`, etc.
