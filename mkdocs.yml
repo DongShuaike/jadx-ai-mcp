@@ -34,6 +34,8 @@ nav:
   - User guide: user-guide.md
   - API reference: api-reference.md
   - Architecture: architecture.md
+  - Java Codebase: java-api.md
+  - Python Codebase: python-api.md
   - Examples: examples.md
   - Troubleshooting: troubleshooting.md
   - Contributing: contributing.md
