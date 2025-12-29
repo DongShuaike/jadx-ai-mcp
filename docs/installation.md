@@ -62,7 +62,36 @@ Example config:
 }
 ```
 
-## 4) Verify
+or you can install the jadx_mcp_server directly as executable directly using below command:
+
+```
+uv tool install git+https://github.com/zinja-coder/jadx-mcp-server
+```
+
+and then you can just provide `jadx_mcp_server` in `command` section of mcp configuration.
+
+## 4) Use Cherry Studio
+
+If you want to configure the MCP tool in Cherry Studio, you can refer to the following configuration.
+- Type: stdio
+- command: uv
+- argument:
+```bash
+--directory
+path/to/jadx-mcp-server
+run
+jadx_mcp_server.py
+```
+- `path/to/jadx-mcp-server` with the absolute path to where you cloned this
+repository
+
+## 5) Using LMStudio
+
+You can also use JADX AI MCP Server with LM Studio by configuring it's mcp.json file. Here's the video guide.
+
+https://github.com/user-attachments/assets/b4a6b280-5aa9-4e76-ac72-a0abec73b809
+
+## 6) Verify
 
 1. Open JADX-GUI and load an APK.
 2. Ensure the plugin server is running (Plugins → JADX-AI-MCP → Server Status).
