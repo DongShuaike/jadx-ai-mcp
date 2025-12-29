@@ -341,20 +341,25 @@ public class ClassRoutes {
             JadxWrapper wrapper = mainWindow.getWrapper();
             List<ResourceFile> resources = wrapper.getResources();
 
+            // get the manifest resource file
             ResourceFile manifestRes = AndroidManifestParser.getAndroidManifest(resources);
             if (manifestRes == null) {
                 JadxAIMCPPluginError.handleError(ctx, 404, "AndroidManifest.xml not found.", logger);
                 return;
             }
 
-            String manifestXml = manifestRes.loadContent().getText().getCodeStr();
+            // load manifest content and parse xml
+            String manifestXml = manifestRes.loadContent()
+                    .getText()
+                    .getCodeStr();
             Document manifestDoc = parseManifestXml(manifestXml, wrapper.getArgs().getSecurity());
 
-            Element manifestElement = (Element) manifestDoc.getElementsByTagName("manfiest").item(0);
+            // Extract the package name from the <manifest> tag
+            Element manifestElement = (Element) manifestDoc.getElementsByTagName("manifest").item(0);
             String packageName = manifestElement.getAttribute("package");
 
             if (packageName.isEmpty()) {
-                JadxAIMCPPluginError.handleError(ctx, 404, "Package name not found in manifest.", logger);
+                JadxAIMCPPluginError.handleError(ctx, 404, "Package name not found in AndroiManifest.xml", logger);
                 return;
             }
 
