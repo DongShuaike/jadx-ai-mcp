@@ -97,10 +97,10 @@ Thanks to these wonderful people for their contributions ⭐
 
 
 <div align="center">
-    <!--<img alt="banner" height="480px" widht="620px" src="docs/assets/img.png">-->
+    <img alt="banner" height="480px" widht="620px" src="docs/assets/img.png">
 </div>
 
-![jadx-ai-banner.png](docs/assets/img.png) Image generated using AI tools.
+<!-- ![jadx-ai-banner.png](docs/assets/img.png) Image generated using AI tools. -->
 
 #### Read The Docs
  - Read The Docs is now live: https://jadx-ai-mcp.readthedocs.io/en/latest/
