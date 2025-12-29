@@ -241,23 +241,4 @@ public class ResourceRoutes {
     private ResourceFile getManifestFile() {
         return AndroidManifestParser.getAndroidManifest(mainWindow.getWrapper().getResources());
     }
-
-    /**
-     * @param String, IJadxSecurity
-     * @return Document
-     * 
-     * reusing jadx's secure xml parsing logic for parsing manifest xml file
-     * this code is taken from jadx - 
-     * https://github.com/skylot/jadx/blob/47647bbb9a9a3cd3150705e09cc1f84a5e9f0be6/jadx-core/src/main/java/jadx/core/utils/android/AndroidManifestParser.java#L214
-     */
-    private Document parseManifestXml(String xmlContent, IJadxSecurity security) {
-        try (InputStream xmlStream = new ByteArrayInputStream(xmlContent.getBytes(StandardCharsets.UTF_8))) {
-            Document doc = security.parseXml(xmlStream);
-            doc.getDocumentElement().normalize();
-            return doc;
-        } catch (Exception e) {
-            throw new JadxRuntimeException("Failed to parse AndroidManifest.xml", e);
-        }
-    }    
-
 }
