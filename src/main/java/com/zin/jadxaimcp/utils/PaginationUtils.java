@@ -23,7 +23,19 @@ public class PaginationUtils {
     public final int MAX_PAGE_SIZE = 10000;
     public final int MAX_OFFSET = 1000000;
 
-    // Generic pagination handler that can be used by any endpoint
+    /**
+     * @param ctx The HTTP request context containing pagination parameters
+     * @param allItems The complete list of items to paginate
+     * @param dataType A string identifying the type of data being paginated
+     * @param itemsKey The key name for the items array in the response JSON
+     * @return Map The paginated response with metadata
+     * @throws PaginationException If pagination parameters are invalid
+     * 
+     * This method handles pagination for endpoints with default string transformation.
+     * It delegates to the overloaded method with item.toString() as the transformer.
+     * 
+     * This is a convenience method for simple string-based pagination.
+     */
     public <T> Map<String, Object> handlePagination(
             Context ctx,
             List<T> allItems,
@@ -33,7 +45,27 @@ public class PaginationUtils {
         return handlePagination(ctx, allItems, dataType, itemsKey, item -> item.toString());
     }
 
-    // Generic pagination handler with custom item transformer
+    /**
+     * @param ctx The HTTP request context containing pagination parameters
+     * @param allItems The complete list of items to paginate
+     * @param dataType A string identifying the type of data being paginated
+     * @param itemsKey The key name for the items array in the response JSON
+     * @param itemTransformer A function to transform each item before including in response
+     * @return Map The paginated response with comprehensive metadata
+     * @throws PaginationException If pagination parameters are invalid
+     * 
+     * This method provides generic pagination for any list of items.
+     * 1. It parses and validates pagination parameters (offset, limit/count)
+     * 2. It calculates pagination boundaries (start, end, hasMore)
+     * 3. It transforms items using the provided function
+     * 4. It builds a comprehensive response including:
+     *    - Paginated data subset
+     *    - Total count and current page info
+     *    - Navigation helpers (next_offset, prev_offset)
+     *    - Page calculations (current_page, total_pages)
+     * 
+     * Supports both 'limit' and 'count' parameters for backward compatibility.
+     */
     public <T> Map<String, Object> handlePagination(
             Context ctx,
             List<T> allItems,
@@ -63,7 +95,24 @@ public class PaginationUtils {
         return buildPaginationResponse(transformedItems, params, bounds, totalItems, dataType, itemsKey);
     }
 
-    // Parse and validate pagination parameters
+    /**
+     * @param ctx The HTTP request context
+     * @param totalItems The total number of items in the dataset
+     * @return PaginationParams Object containing validated pagination parameters
+     * @throws PaginationException If parameters are invalid or out of bounds
+     * 
+     * This method parses and validates pagination parameters from the request.
+     * 1. It extracts 'offset', 'limit', and 'count' (legacy) query parameters
+     * 2. It validates offset is non-negative and within MAX_OFFSET (1,000,000)
+     * 3. It validates limit is non-negative and within MAX_PAGE_SIZE (10,000)
+     * 4. It determines effective limit:
+     *    - If no limit specified: uses DEFAULT_PAGE_SIZE (100) or remaining items
+     *    - If limit is 0: returns all remaining items from offset
+     *    - Otherwise: uses requested limit
+     * 5. It ensures the effective limit doesn't exceed available items
+     * 
+     * The 'count' parameter is supported for backward compatibility.
+     */
     private PaginationParams parsePaginationParams(Context ctx, int totalItems) throws PaginationException {
         String offsetParam = ctx.queryParam("offset");
         String limitParam = ctx.queryParam("limit");
@@ -119,7 +168,20 @@ public class PaginationUtils {
         return new PaginationParams(offset, effectiveLimit, requestedLimit, hasCustomLimit);
     }
 
-    // Calculate pagination boundaries
+    /**
+     * @param params The validated pagination parameters
+     * @param totalItems The total number of items in the dataset
+     * @return PaginationBounds Object containing calculated boundaries
+     * 
+     * This method calculates the actual boundaries for data extraction.
+     * 1. It checks if offset exceeds total items (returns empty bounds)
+     * 2. It calculates startIndex from offset
+     * 3. It calculates endIndex ensuring it doesn't exceed total items
+     * 4. It determines if there are more items beyond the current page
+     * 5. It calculates the next offset for navigation (or -1 if no more items)
+     * 
+     * Returns empty bounds (0, 0) when offset is beyond available data.
+     */
     private PaginationBounds calculatePaginationBounds(PaginationParams params, int totalItems) {
         if (params.offset >= totalItems) {
             return new PaginationBounds(0, 0, false, totalItems);
@@ -133,7 +195,34 @@ public class PaginationUtils {
         return new PaginationBounds(startIndex, endIndex, hasMore, nextOffset);
     }
 
-    // Build comprehensive pagination response
+    /**
+     * @param data The paginated data subset
+     * @param params The pagination parameters used
+     * @param bounds The calculated pagination boundaries
+     * @param totalItems The total number of items in the dataset
+     * @param dataType A string identifying the type of data
+     * @param itemsKey The key name for the items array in the response
+     * @return Map The comprehensive pagination response
+     * 
+     * This method constructs a complete pagination response with metadata.
+     * 1. It includes the data type and paginated items
+     * 2. It adds pagination metadata:
+     *    - total: Total items in dataset
+     *    - offset: Current offset position
+     *    - limit: Items per page
+     *    - count: Actual items returned in this page
+     *    - has_more: Boolean indicating more pages exist
+     * 3. It adds navigation helpers:
+     *    - next_offset: Offset for next page (if has_more)
+     *    - prev_offset: Offset for previous page (if offset > 0)
+     * 4. It adds page calculations (if limit > 0):
+     *    - current_page: Current page number (1-indexed)
+     *    - total_pages: Total number of pages
+     *    - page_size: Items per page
+     * 5. It includes requested_count for legacy compatibility
+     * 
+     * This provides comprehensive information for client-side pagination controls.
+     */
     private Map<String, Object> buildPaginationResponse(
             List<Object> data,
             PaginationParams params,

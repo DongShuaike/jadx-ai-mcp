@@ -28,7 +28,22 @@ public class PluginServer {
     }
 
     /**
-     * Starts the Javalin server and registers all routes
+     * @return void
+     * 
+     * This method starts the Javalin HTTP server for the MCP plugin.
+     * 1. It creates a Javalin instance with custom configuration:
+     *    - Disables the default Javalin banner
+     * 2. It starts the server on the configured port
+     * 3. It registers all API route handlers via registerRoutes()
+     * 4. It sets the running flag to true
+     * 5. It logs the startup success message with custom banner and server URL
+     * 6. If startup fails, it:
+     *    - Logs the error with exception details
+     *    - Sets running flag to false
+     *    - Re-throws a RuntimeException to notify the plugin
+     * 
+     * This method is called by the plugin initialization mechanism after
+     * JADX has fully loaded the APK content.
      */
     public void start() {
         try {
@@ -56,7 +71,18 @@ public class PluginServer {
     }
 
     /**
-     * Stops the Javalin server gracefully
+     * @return void
+     * 
+     * This method performs graceful shutdown of the Javalin server.
+     * 1. It checks if the server instance exists
+     * 2. It calls Javalin's stop() method to close all connections
+     * 3. It logs the successful shutdown
+     * 4. If shutdown fails, it logs the error
+     * 5. In the finally block, it:
+     *    - Nullifies the server instance
+     *    - Sets running flag to false
+     * 
+     * This method is called during plugin restart or JADX shutdown.
      */
     public void stop() {
         if (app != null) {
@@ -72,17 +98,49 @@ public class PluginServer {
         }
     }
 
+    /**
+     * @return boolean True if server is running, false otherwise
+     * 
+     * This method returns the volatile running flag indicating server status.
+     * The flag is thread-safe and reflects the actual server state.
+     */
     public boolean isRunning() {
         return isRunning;
     }
 
+    /**
+     * @return int The port number the server is configured to listen on
+     * 
+     * This method returns the port number used by the server.
+     * The port is set during construction and remains constant for the server's lifetime.
+     */
     public int getPort() {
         return port;
     }
 
     /**
-     * Central method to register all API endpoints
-     * Groups related endpoints into specific Route Handler classes
+     * @return void
+     * 
+     * This method registers all HTTP API endpoints with their route handlers.
+     * 1. It instantiates route handler classes, passing required dependencies:
+     *    - GeneralRoutes: Health checks and general endpoints
+     *    - ClassRoutes: Class navigation and analysis
+     *    - MethodRoutes: Method search and retrieval
+     *    - ResourceRoutes: Manifest and resource file access
+     *    - RefactoringRoutes: Code renaming operations
+     *    - DebugRoutes: Debugging information
+     *    - XrefsRoutes: Cross-reference analysis
+     * 2. It maps HTTP GET endpoints to handler methods organized by category:
+     *    - General: /health
+     *    - Classes: /current-class, /all-classes, /class-source, etc.
+     *    - Methods: /method-by-name, /search-method
+     *    - Xrefs: /xrefs-to-class, /xrefs-to-method, /xrefs-to-field
+     *    - Resources: /manifest, /strings, /list-all-resource-files-names
+     *    - Refactoring: /rename-class, /rename-method, /rename-field, /rename-package
+     *    - Debugging: /debug/stack-frames, /debug/variables, /debug/threads
+     * 
+     * All route handlers receive mainWindow and paginationUtils for accessing
+     * JADX API and providing consistent pagination across endpoints.
      */
     private void registerRoutes() {
         // Instantiate Route Controllers
