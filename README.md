@@ -98,8 +98,6 @@ Thanks to these wonderful people for their contributions ⭐
 
 <div align="center">
     <!--<img alt="banner" height="480px" widht="620px" src="docs/assets/img.png">-->
- <img width="480px" height="620px" alt="Under Refactoring" src="https://github.com/user-attachments/assets/f196dfd0-3b00-417e-8308-33b754914783" />
-
 </div>
 
 ![jadx-ai-banner.png](docs/assets/img.png) Image generated using AI tools.
