@@ -186,7 +186,6 @@ public class RefactoringRoutes {
 
         try {
             JadxWrapper wrapper = mainWindow.getWrapper();
-            int renamedCount = 0;
             
             for (JavaClass cls : wrapper.getIncludedClassesWithInners()) {
                 if (cls.getFullName().equals(className)) {
@@ -195,15 +194,38 @@ public class RefactoringRoutes {
                         if (method.getName().equals(methodName) || fullMethodName.equalsIgnoreCase(methodName)) {
                             MethodNode methodNode = method.getMethodNode();
                             if (methodNode == null) continue;
-                            
+
                             List<SSAVar> sVars = methodNode.getSVars();
-                            if (sVars == null) continue;
+
+                            // Ensure class is processed to populate SSA variables
+                            if (sVars.isEmpty()) {
+                                logger.info("SSA variables empty for method {}, forcing class reload and processing...", method.getName());
+                                try {
+                                    // defined class need to be unloaded to reset state and allow full processing
+                                    cls.getClassNode().unload();
+                                    cls.getClassNode().root().getProcessClasses().forceProcess(cls.getClassNode());
+
+                                    // Re-fetch method node and sVars after processing because unload/load recreates MethodNode objects
+                                    MethodNode newMethodNode = cls.getClassNode().searchMethodByShortName(method.getName());
+                                    if (newMethodNode != null) {
+                                         methodNode = newMethodNode;
+                                         sVars = methodNode.getSVars();
+                                         logger.info("Class reloaded. New SSA variables count: {}", sVars != null ? sVars.size() : "null");
+                                    } else {
+                                         logger.error("Failed to find method {} after reload", method.getName());
+                                    }
+
+                                } catch (Exception e) {
+                                    logger.error("Failed to force process class {}", cls.getName(), e);
+                                }
+                            }
+
+                            if (sVars == null || sVars.isEmpty()) continue;
 
                             for (SSAVar sVar : sVars) {
                                 boolean nameMatch = variableName.equals(sVar.getName());
                                 boolean regMatch = regStr == null || regStr.isEmpty() || String.valueOf(sVar.getRegNum()).equals(regStr);
                                 boolean ssaMatch = ssaStr == null || ssaStr.isEmpty() || String.valueOf(sVar.getVersion()).equals(ssaStr);
-
                                 if (nameMatch && regMatch && ssaMatch) {
                                     VarNode varNode = VarNode.get(methodNode, sVar);
                                     if (varNode != null) {
@@ -213,7 +235,8 @@ public class RefactoringRoutes {
                                         mainWindow.events().send(event);
                                         
                                         logger.info("Renamed variable {} to {} in method {}", variableName, newName, method.getName());
-                                        renamedCount++;
+                                        ctx.json(Map.of("result", "Rename variable " + variableName + " to " + newName));
+                                        return;
                                     }
                                 }
                             }
@@ -222,11 +245,7 @@ public class RefactoringRoutes {
                 }
             }
 
-            if (renamedCount > 0) {
-                ctx.json(Map.of("result", "Renamed " + renamedCount + " occurrences of variable " + variableName + " to " + newName));
-            } else {
-                JadxAIMCPPluginError.handleError(ctx, 404, "Variable " + variableName + " not found in method " + methodName, logger);
-            }
+            JadxAIMCPPluginError.handleError(ctx, 404, "Variable " + variableName + " not found in method " + methodName, logger);
         } catch (Exception e) {
             JadxAIMCPPluginError.handleError(ctx, "Internal error while trying to rename the variable: " + e.getMessage(), e, logger);
         }
