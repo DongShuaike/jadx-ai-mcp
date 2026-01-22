@@ -10,6 +10,10 @@ import jadx.api.plugins.events.types.NodeRenamedByUser;
 import jadx.gui.JadxWrapper;
 import jadx.gui.ui.MainWindow;
 
+import jadx.core.dex.nodes.MethodNode;
+import jadx.core.dex.instructions.args.SSAVar;
+import jadx.api.metadata.annotations.VarNode;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -158,6 +162,99 @@ public class RefactoringRoutes {
      * @return void
      * @param Context
      * 
+     * This routing method handle the /rename-variable mcp tool call's http request.
+     * It validates required params: class_name, method_name, variable_name, new_name.
+     * It tries to find the method and then iterates over its SSA variables to find the matching variable.
+     * If found, it renames it using NodeRenamedByUser event.
+     */
+    public void handleRenameVariable(Context ctx) {
+        String className = ctx.queryParam("class_name");
+        String methodName = ctx.queryParam("method_name");
+        String variableName = ctx.queryParam("variable_name");
+        String newName = ctx.queryParam("new_name");
+        
+        // Optional params for more specific targeting
+        String regStr = ctx.queryParam("reg");
+        String ssaStr = ctx.queryParam("ssa");
+
+        if (validateParams(ctx, className, methodName, variableName, newName)) return;
+
+        // Strip method signature if present
+        if (methodName.contains("(")) {
+            methodName = methodName.substring(0, methodName.indexOf('('));
+        }
+
+        try {
+            JadxWrapper wrapper = mainWindow.getWrapper();
+            
+            for (JavaClass cls : wrapper.getIncludedClassesWithInners()) {
+                if (cls.getFullName().equals(className)) {
+                    for (JavaMethod method : cls.getMethods()) {
+                        String fullMethodName = cls.getFullName() + "." + method.getName();
+                        if (method.getName().equals(methodName) || fullMethodName.equalsIgnoreCase(methodName)) {
+                            MethodNode methodNode = method.getMethodNode();
+                            if (methodNode == null) continue;
+
+                            List<SSAVar> sVars = methodNode.getSVars();
+
+                            // Ensure class is processed to populate SSA variables
+                            if (sVars.isEmpty()) {
+                                logger.info("SSA variables empty for method {}, forcing class reload and processing...", method.getName());
+                                try {
+                                    // defined class need to be unloaded to reset state and allow full processing
+                                    cls.getClassNode().unload();
+                                    cls.getClassNode().root().getProcessClasses().forceProcess(cls.getClassNode());
+
+                                    // Re-fetch method node and sVars after processing because unload/load recreates MethodNode objects
+                                    MethodNode newMethodNode = cls.getClassNode().searchMethodByShortName(method.getName());
+                                    if (newMethodNode != null) {
+                                         methodNode = newMethodNode;
+                                         sVars = methodNode.getSVars();
+                                         logger.info("Class reloaded. New SSA variables count: {}", sVars != null ? sVars.size() : "null");
+                                    } else {
+                                         logger.error("Failed to find method {} after reload", method.getName());
+                                    }
+
+                                } catch (Exception e) {
+                                    logger.error("Failed to force process class {}", cls.getName(), e);
+                                }
+                            }
+
+                            if (sVars == null || sVars.isEmpty()) continue;
+
+                            for (SSAVar sVar : sVars) {
+                                boolean nameMatch = variableName.equals(sVar.getName());
+                                boolean regMatch = regStr == null || regStr.isEmpty() || String.valueOf(sVar.getRegNum()).equals(regStr);
+                                boolean ssaMatch = ssaStr == null || ssaStr.isEmpty() || String.valueOf(sVar.getVersion()).equals(ssaStr);
+                                if (nameMatch && regMatch && ssaMatch) {
+                                    VarNode varNode = VarNode.get(methodNode, sVar);
+                                    if (varNode != null) {
+                                        NodeRenamedByUser event = new NodeRenamedByUser(varNode, variableName, newName);
+                                        event.setRenameNode(varNode);
+                                        event.setResetName(newName.isEmpty());
+                                        mainWindow.events().send(event);
+                                        
+                                        logger.info("Renamed variable {} to {} in method {}", variableName, newName, method.getName());
+                                        ctx.json(Map.of("result", "Rename variable " + variableName + " to " + newName));
+                                        return;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            JadxAIMCPPluginError.handleError(ctx, 404, "Variable " + variableName + " not found in method " + methodName, logger);
+        } catch (Exception e) {
+            JadxAIMCPPluginError.handleError(ctx, "Internal error while trying to rename the variable: " + e.getMessage(), e, logger);
+        }
+    }
+
+    /**
+     * @return void
+     * @param Context
+     * 
      * This routing method handle the /rename-package mcp tool call's http request, After validating the 
      * required http params, It iterates over list of class one by one under the oldpackage and 
      * then it renames it using NodeRenamedByUser class' events methods 'setRenameNode' and 'setResetName'.
@@ -232,6 +329,21 @@ public class RefactoringRoutes {
     private boolean validateParams(Context ctx, String p1, String p2, String p3) {
         if (p1 == null || p1.isEmpty() || p2 == null || p2.isEmpty()) {
             //ctx.status(400).json(Map.of("error", "Missing required parameters."));
+            JadxAIMCPPluginError.handleError(ctx, 400, "Missing required parameters", logger);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * @param Context, String, String, String, String
+     * @return boolean
+     * 
+     * This method is used to validate the availability of required http params in RefactoringRoutes
+     * MCP tool's HTTP requests. If params are ok return true else return false.
+     */
+    private boolean validateParams(Context ctx, String p1, String p2, String p3, String p4) {
+        if (p1 == null || p1.isEmpty() || p2 == null || p2.isEmpty() || p3 == null || p3.isEmpty() || p4 == null || p4.isEmpty()) {
             JadxAIMCPPluginError.handleError(ctx, 400, "Missing required parameters", logger);
             return true;
         }
