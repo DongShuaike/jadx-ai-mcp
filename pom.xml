@@ -13,14 +13,32 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
-
+    <repositories>
+        <repository>
+            <id>google</id>
+            <name>Google Maven Repository</name>
+            <url>https://dl.google.com/dl/android/maven2/</url>
+        </repository>
+        <repository>
+            <id>central</id>
+            <name>Maven Central</name>
+            <url>https://repo.maven.apache.org/maven2</url>
+        </repository>
+    </repositories>
 
     <dependencies>
-        <!-- Local JAR dependency to access jadx-gui-->
+        <!-- Compile against JADX APIs provided by the host app at runtime -->
         <dependency>
             <groupId>io.github.skylot</groupId>
-            <artifactId>jadx-all</artifactId>
+            <artifactId>jadx-gui</artifactId>
             <version>1.5.3</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.github.skylot</groupId>
+            <artifactId>jadx-core</artifactId>
+            <version>1.5.3</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>com.google.code.gson</groupId>
@@ -75,10 +93,10 @@
                         </goals>
                         <configuration>
                             <createDependencyReducedPom>false</createDependencyReducedPom>
-                            <!-- Exclude jadx from the shaded JAR -->
+                            <!-- Exclude JADX from the shaded JAR -->
                             <artifactSet>
                                 <excludes>
-                                    <exclude>io.github.skylot:jadx-all</exclude>
+                                    <exclude>io.github.skylot:jadx-gui</exclude>
                                 </excludes>
                             </artifactSet>
                             <!-- Relocate dependencies to avoid conflicts -->

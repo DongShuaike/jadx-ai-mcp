@@ -42,3 +42,6 @@ target/
 
 ### dependecy ###
 lib/
+
+### local notes ###
+*.md
