@@ -22,10 +22,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.prefs.Preferences;
 
-// Importing custom banner string
-import com.zin.jadxaimcp.utils.JadxAIMCPBanner;
-import com.zin.jadxaimcp.utils.PaginationUtils;
-import com.zin.jadxaimcp.utils.PaginationUtils.PaginationException;
 import com.zin.jadxaimcp.ui.PluginMenu;
 import com.zin.jadxaimcp.server.PluginServer;
 
@@ -33,10 +29,26 @@ public class JadxAIMCP implements JadxPlugin {
     public static final String PLUGIN_ID = "jadx-ai-mcp";
     private static final Logger logger = LoggerFactory.getLogger(JadxAIMCP.class);
     private static final String PREF_KEY_PORT = "jadx_ai_mcp_port";
+    private static final String PREF_KEY_HOST = "jadx_ai_mcp_host";
+    private static final String PREF_KEY_REMOTE_MODE = "jadx_ai_mcp_remote_mode";
     private static final int DEFAULT_PORT = 8650;
+    private static final String DEFAULT_HOST = "127.0.0.1";
+    private static final boolean DEFAULT_REMOTE_MODE = true;
+
+    // Environment variables
+    private static final String ENV_PORT = "JADX_AI_MCP_PORT";
+    private static final String ENV_HOST = "JADX_AI_MCP_HOST";
+    private static final String ENV_REMOTE_MODE = "JADX_AI_MCP_REMOTE_MODE";
+
+    // JVM system properties
+    private static final String PROP_PORT = "jadx.ai.mcp.port";
+    private static final String PROP_HOST = "jadx.ai.mcp.host";
+    private static final String PROP_REMOTE_MODE = "jadx.ai.mcp.remote_mode";
 
     // Config & State
     private int currentPort = DEFAULT_PORT;
+    private String currentHost = DEFAULT_HOST;
+    private boolean remoteModeEnabled = DEFAULT_REMOTE_MODE;
     private Preferences prefs;
     private ScheduledExecutorService scheduler;
 
@@ -74,6 +86,9 @@ public class JadxAIMCP implements JadxPlugin {
             // 1. Initialize Config
             prefs = Preferences.userNodeForPackage(JadxAIMCP.class);
             currentPort = prefs.getInt(PREF_KEY_PORT, DEFAULT_PORT);
+            currentHost = prefs.get(PREF_KEY_HOST, DEFAULT_HOST);
+            remoteModeEnabled = prefs.getBoolean(PREF_KEY_REMOTE_MODE, DEFAULT_REMOTE_MODE);
+            applyRuntimeOverrides();
 
             // 2. Initialize UI
             this.pluginMenu = new PluginMenu(mainWindow, this);
@@ -81,6 +96,8 @@ public class JadxAIMCP implements JadxPlugin {
 
             // 3. Start Server Lifecycle
             logger.info("JADX-AI-MCP Plugin: Initializing...");
+            logger.info("JADX-AI-MCP Plugin: Effective config host={}, port={}, remote_mode={}",
+                    currentHost, currentPort, remoteModeEnabled);
             startDelayedInitialization();
         } catch (Exception e) {
             logger.error("JADX-AI-MCP Plugin: Initialization error: " + e.getMessage(), e);
@@ -154,7 +171,8 @@ public class JadxAIMCP implements JadxPlugin {
     private void startServer() {
         try {
             if (pluginServer != null) pluginServer.stop();
-            pluginServer = new PluginServer(mainWindow, currentPort);
+            String effectiveHost = resolveBindHost();
+            pluginServer = new PluginServer(mainWindow, effectiveHost, currentPort, remoteModeEnabled);
             pluginServer.start();
         } catch (Exception e) {
             logger.error("JADX-AI-MCP Plugin: Failed to start server: " + e.getMessage());
@@ -177,14 +195,16 @@ public class JadxAIMCP implements JadxPlugin {
      */
     public void restartServer() {
         new Thread(() -> {
-            logger.info("JADX-AI-MCP Plugin: Restarting server on port " + currentPort);
+            logger.info("JADX-AI-MCP Plugin: Restarting server on {}:{} (remote mode: {})",
+                    currentHost, currentPort, remoteModeEnabled);
             if (pluginServer != null) pluginServer.stop();
             try {
                 Thread.sleep(1000); // Wait for port release
                 startServer();
                 SwingUtilities.invokeLater(() ->
                     JOptionPane.showMessageDialog(mainWindow,
-                        "Server restarted on port " + currentPort,
+                        "Server restarted at " + getServerUrl()
+                                + (isAuthRequired() ? "\nA new one-time token was printed in logs." : ""),
                         "Server restarted.", JOptionPane.INFORMATION_MESSAGE));
             } catch (Exception e) {
                 logger.error("Failed to restart server", e);
@@ -210,6 +230,53 @@ public class JadxAIMCP implements JadxPlugin {
         prefs.putInt(PREF_KEY_PORT, newPort);
     }
 
+    public void updateHost(String newHost) {
+        String host = newHost == null ? "" : newHost.trim();
+        if (host.isEmpty()) {
+            throw new IllegalArgumentException("Host must not be empty");
+        }
+        this.currentHost = host;
+        prefs.put(PREF_KEY_HOST, host);
+    }
+
+    public String getCurrentHost() {
+        return currentHost;
+    }
+
+    public void setRemoteModeEnabled(boolean enabled) {
+        this.remoteModeEnabled = enabled;
+        prefs.putBoolean(PREF_KEY_REMOTE_MODE, enabled);
+        if (!enabled && !isLoopbackHost(currentHost)) {
+            logger.warn("Remote mode disabled while host={} is non-loopback. Falling back to {}",
+                    currentHost, DEFAULT_HOST);
+            updateHost(DEFAULT_HOST);
+        }
+    }
+
+    public boolean isRemoteModeEnabled() {
+        return remoteModeEnabled;
+    }
+
+    public boolean isAuthRequired() {
+        if (pluginServer != null && pluginServer.isRunning()) {
+            return pluginServer.isAuthRequired();
+        }
+        return remoteModeEnabled;
+    }
+
+    public String getMaskedToken() {
+        if (pluginServer == null || !pluginServer.isRunning()) {
+            return "N/A";
+        }
+        return pluginServer.getMaskedToken();
+    }
+
+    public boolean rotateOneTimeToken() {
+        if (pluginServer == null || !pluginServer.isRunning()) {
+            return false;
+        }
+        return pluginServer.rotateOneTimeToken() != null;
+    }
 
     /**
      * @return void
@@ -223,6 +290,12 @@ public class JadxAIMCP implements JadxPlugin {
         updatePort(DEFAULT_PORT);
     }
 
+    public void resetToSecureDefaults() {
+        updateHost(DEFAULT_HOST);
+        setRemoteModeEnabled(false);
+        resetToDefaultPort();
+    }
+
     /**
      * @return int The currently configured port number
      * 
@@ -232,6 +305,11 @@ public class JadxAIMCP implements JadxPlugin {
      */
     public int getCurrentPort() {
         return currentPort;
+    }
+
+    public String getServerUrl() {
+        String host = (pluginServer != null && pluginServer.isRunning()) ? pluginServer.getHost() : resolveBindHost();
+        return "http://" + host + ":" + currentPort + "/";
     }
 
     /**
@@ -273,5 +351,89 @@ public class JadxAIMCP implements JadxPlugin {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    private String resolveBindHost() {
+        if (!remoteModeEnabled && !isLoopbackHost(currentHost)) {
+            logger.warn("Remote mode is disabled. Overriding bind host {} -> {}", currentHost, DEFAULT_HOST);
+            return DEFAULT_HOST;
+        }
+        return currentHost;
+    }
+
+    private boolean isLoopbackHost(String host) {
+        return "127.0.0.1".equals(host) || "localhost".equalsIgnoreCase(host) || "::1".equals(host);
+    }
+
+    private void applyRuntimeOverrides() {
+        String hostOverride = firstNonEmpty(System.getProperty(PROP_HOST), System.getenv(ENV_HOST));
+        if (hostOverride != null) {
+            String normalizedHost = hostOverride.trim();
+            if (!normalizedHost.isEmpty()) {
+                currentHost = normalizedHost;
+            } else {
+                logger.warn("JADX-AI-MCP Plugin: Ignoring empty host override");
+            }
+        }
+
+        String portOverride = firstNonEmpty(System.getProperty(PROP_PORT), System.getenv(ENV_PORT));
+        if (portOverride != null) {
+            Integer parsedPort = parsePort(portOverride);
+            if (parsedPort != null) {
+                currentPort = parsedPort;
+            } else {
+                logger.warn("JADX-AI-MCP Plugin: Ignoring invalid port override '{}'", portOverride);
+            }
+        }
+
+        String remoteModeOverride = firstNonEmpty(System.getProperty(PROP_REMOTE_MODE), System.getenv(ENV_REMOTE_MODE));
+        if (remoteModeOverride != null) {
+            Boolean parsedRemoteMode = parseBoolean(remoteModeOverride);
+            if (parsedRemoteMode != null) {
+                remoteModeEnabled = parsedRemoteMode;
+            } else {
+                logger.warn("JADX-AI-MCP Plugin: Ignoring invalid remote mode override '{}'", remoteModeOverride);
+            }
+        }
+    }
+
+    private Integer parsePort(String value) {
+        try {
+            int parsed = Integer.parseInt(value.trim());
+            if (parsed < 1024 || parsed > 65535) {
+                return null;
+            }
+            return parsed;
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private Boolean parseBoolean(String value) {
+        String normalized = value == null ? "" : value.trim().toLowerCase();
+        switch (normalized) {
+            case "1":
+            case "true":
+            case "yes":
+            case "on":
+                return true;
+            case "0":
+            case "false":
+            case "no":
+            case "off":
+                return false;
+            default:
+                return null;
+        }
+    }
+
+    private String firstNonEmpty(String first, String second) {
+        if (first != null && !first.trim().isEmpty()) {
+            return first;
+        }
+        if (second != null && !second.trim().isEmpty()) {
+            return second;
+        }
+        return null;
     }
 }

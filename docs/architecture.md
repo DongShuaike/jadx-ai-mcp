@@ -72,8 +72,10 @@ SwingUtilities.invokeLater(() -> {
 ## 🔒 Security Model
 
 ### Network Security
-- **Localhost Binding**: Plugin binds ONLY to `127.0.0.1`. Remote access blocked.
-- **No Auth**: Relies on OS-level user isolation.
+- **Configurable Binding**: Plugin bind host is configurable (`127.0.0.1` by default).
+- **Remote Mode**: Optional remote mode enables bearer-token auth on all endpoints.
+- **One-Time Token**: Strong token is generated on startup in remote mode and printed once in logs.
+- **Recommended Deployment**: Use SSH tunnel for cloud servers without a domain.
 
 ### Input Validation
 - **Path Traversal**: Resource paths validated against APK root.

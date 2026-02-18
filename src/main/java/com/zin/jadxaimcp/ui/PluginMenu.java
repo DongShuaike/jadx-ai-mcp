@@ -6,7 +6,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.swing.*;
-import java.awt.*;
 
 public class PluginMenu {
     private static final Logger logger = LoggerFactory.getLogger(PluginMenu.class);
@@ -50,25 +49,41 @@ public class PluginMenu {
                 JMenuItem portItem = new JMenuItem("Configure Port...");
                 portItem.addActionListener(e -> showPortConfigDialog());
 
-                // 2. Default Port
-                JMenuItem defaultPortItem = new JMenuItem("Default Port");
-                defaultPortItem.addActionListener(e -> {
-                    plugin.resetToDefaultPort();
+                // 2. Configure Host
+                JMenuItem hostItem = new JMenuItem("Configure Host...");
+                hostItem.addActionListener(e -> showHostConfigDialog());
+
+                // 3. Remote Mode Toggle
+                JCheckBoxMenuItem remoteModeItem = new JCheckBoxMenuItem("Enable Remote Mode");
+                remoteModeItem.setSelected(plugin.isRemoteModeEnabled());
+                remoteModeItem.addActionListener(e -> toggleRemoteMode(remoteModeItem.isSelected()));
+
+                // 4. Reset secure defaults
+                JMenuItem defaultsItem = new JMenuItem("Reset to Local Defaults");
+                defaultsItem.addActionListener(e -> {
+                    plugin.resetToSecureDefaults();
                     plugin.restartServer();
                 });
 
-                // 3. Restart Server
+                // 5. Restart Server
                 JMenuItem restartItem = new JMenuItem("Restart Server");
                 restartItem.addActionListener(e -> plugin.restartServer());
 
-                // 4. Server Status
+                // 6. Rotate one-time token
+                JMenuItem rotateTokenItem = new JMenuItem("Rotate One-Time Token");
+                rotateTokenItem.addActionListener(e -> rotateOneTimeToken());
+
+                // 7. Server Status
                 JMenuItem statusItem = new JMenuItem("Server Status");
                 statusItem.addActionListener(e -> showServerStatus());
 
                 mcpMenu.add(portItem);
-                mcpMenu.add(defaultPortItem);
+                mcpMenu.add(hostItem);
+                mcpMenu.add(remoteModeItem);
+                mcpMenu.add(defaultsItem);
                 mcpMenu.addSeparator();
                 mcpMenu.add(restartItem);
+                mcpMenu.add(rotateTokenItem);
                 mcpMenu.add(statusItem);
                 pluginsMenu.add(mcpMenu);
                 
@@ -152,6 +167,65 @@ public class PluginMenu {
         }
     }
 
+    private void showHostConfigDialog() {
+        String input = JOptionPane.showInputDialog(mainWindow,
+                "Enter bind host (example: 127.0.0.1, 0.0.0.0, or cloud IP):",
+                plugin.getCurrentHost());
+
+        if (input == null) {
+            return;
+        }
+
+        try {
+            String newHost = input.trim();
+            if (newHost.isEmpty()) {
+                JOptionPane.showMessageDialog(mainWindow, "Host must not be empty",
+                        "Invalid Host", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            if (!newHost.equals(plugin.getCurrentHost())) {
+                plugin.updateHost(newHost);
+                plugin.restartServer();
+            }
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(mainWindow, "Failed to update host: " + ex.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void toggleRemoteMode(boolean enabled) {
+        plugin.setRemoteModeEnabled(enabled);
+        plugin.restartServer();
+        String mode = enabled ? "enabled" : "disabled";
+        String hint = enabled
+                ? "\nA one-time token was printed in logs. Use SSH tunnel + Authorization header."
+                : "\nServer is restricted to local-safe defaults if needed.";
+        JOptionPane.showMessageDialog(mainWindow,
+                "Remote mode " + mode + "." + hint,
+                "Remote Mode", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private void rotateOneTimeToken() {
+        if (!plugin.isAuthRequired()) {
+            JOptionPane.showMessageDialog(mainWindow,
+                    "Remote mode is disabled. Token rotation is not available.",
+                    "Token Rotation", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        boolean rotated = plugin.rotateOneTimeToken();
+        if (!rotated) {
+            JOptionPane.showMessageDialog(mainWindow,
+                    "Server is not running. Start/restart the server first.",
+                    "Token Rotation", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        JOptionPane.showMessageDialog(mainWindow,
+                "Token rotated. New one-time token was printed in logs.",
+                "Token Rotation", JOptionPane.INFORMATION_MESSAGE);
+    }
+
     /**
      * @return void
      * 
@@ -169,10 +243,19 @@ public class PluginMenu {
     private void showServerStatus() {
         boolean running = plugin.isServerRunning();
         String status = running ? "Running" : "Stopped";
-        String url = running ? "http://127.0.0.1:" + plugin.getCurrentPort() + "/" : "N/A";
+        String url = running ? plugin.getServerUrl() : "N/A";
+        String authMode = plugin.isAuthRequired() ? "Enabled" : "Disabled";
+        String remoteMode = plugin.isRemoteModeEnabled() ? "Enabled" : "Disabled";
+        String tokenHint = plugin.isAuthRequired() ? plugin.getMaskedToken() : "N/A";
 
         JOptionPane.showMessageDialog(mainWindow,
-            "Status " + status + "\nPort: " + plugin.getCurrentPort() + "\nURL: " + url,
+            "Status: " + status
+                    + "\nHost: " + plugin.getCurrentHost()
+                    + "\nPort: " + plugin.getCurrentPort()
+                    + "\nURL: " + url
+                    + "\nRemote Mode: " + remoteMode
+                    + "\nAuth Required: " + authMode
+                    + "\nToken Hint: " + tokenHint,
             "MCP Server Status", JOptionPane.INFORMATION_MESSAGE);
     }
 }

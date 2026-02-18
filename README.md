@@ -302,13 +302,20 @@ unzip jadx-ai-mcp-<version>.zip
 
 # 2. Install the plugin
 
-# For this you can follow two approaches:
+# For this you can follow three approaches:
 
 ## 1. One liner - execute below command in your shell
 jadx plugins --install "github:zinja-coder:jadx-ai-mcp"
 
-## The above one line code will install the latest version of the plugin directly into the jadx, no need to download the jadx-ai-mcp's .jar file.
-## 2. Or you can use JADX-GUI to install it by following images as shown below:
+## The above one line code installs latest release artifact from GitHub (not from local build, and not from Maven Central).
+
+## 2. Build local plugin jar and install it via CLI
+cd jadx-ai-mcp
+mvn -DskipTests package
+JAR_PATH=$(ls -t target/*.jar | head -n 1)
+jadx plugins --install-jar "$JAR_PATH"
+
+## 3. Or use JADX-GUI to install a downloaded jar by following images below:
 ```
 
 <div align="center">
@@ -430,14 +437,38 @@ OR
 uv run jadx_mcp_server.py --http --port 9999
 ```
 
-## 6. Custom port configuration for JADX AI MCP Plugin
+## 6. Plugin runtime configuration (Port/Host/Remote Mode)
 
 <img width="800" height="335" alt="image" src="https://github.com/user-attachments/assets/6243adc5-5be4-4e2d-aa16-bdaf78a28e36" />
 
-1. Configure Port: Configure the port on which the JADX AI MCP Plugin will listen on.
-2. Default Port: Revert back the changes and listen on default port.
-3. Restart Server: Force restart the JADX AI MCP Plugin server.
-4. Server Status: Check the status of JADX AI MCP Plugin server.
+1. Configure Port: Configure the port on which the JADX AI MCP Plugin will listen.
+2. Configure Host: Configure bind host (`127.0.0.1`, `0.0.0.0`, or a specific interface IP).
+3. Enable Remote Mode: Enables bearer-token auth on all endpoints and prints a one-time token in logs.
+4. Reset to Local Defaults: Resets host to `127.0.0.1`, remote mode OFF, and default port.
+5. Restart Server: Force restart the JADX AI MCP Plugin server.
+6. Rotate One-Time Token: Rotate remote token and print the new token in logs.
+7. Server Status: Check status, URL, auth mode, and token hint.
+
+### Runtime overrides without GUI interaction
+
+For cloud environments where you cannot click GUI menus, you can configure plugin runtime from shell:
+
+```bash
+export JADX_AI_MCP_HOST=127.0.0.1
+export JADX_AI_MCP_PORT=8650
+export JADX_AI_MCP_REMOTE_MODE=true
+```
+
+Then start JADX GUI (or headless with Xvfb):
+
+```bash
+xvfb-run -a jadx-gui /path/to/app.apk
+```
+
+Notes:
+- `JADX_AI_MCP_REMOTE_MODE` is `true` by default for new installs.
+- You can also use JVM properties: `jadx.ai.mcp.host`, `jadx.ai.mcp.port`, `jadx.ai.mcp.remote_mode`.
+- Valid boolean values: `true/false`, `1/0`, `yes/no`, `on/off`.
 
 To connect with JADX AI MCP Plugin running on custom port, the `--jadx-port` option will be used as shown in following:
 ```
@@ -463,6 +494,24 @@ The MCP Configuration for above will be as follows for claude:
   }
 }
 ```
+
+## 7. Recommended cloud setup (IP-only servers) - SSH tunnel + token
+
+If your cloud server has only an IP (no fixed domain), use this setup:
+
+1. Start `jadx-gui` on cloud, load APK, and enable **Remote Mode** in plugin menu.
+   - Or skip GUI menu and set `JADX_AI_MCP_REMOTE_MODE=true` before startup.
+2. Keep plugin bind host as `127.0.0.1` (recommended).
+3. Copy one-time token printed by plugin logs.
+4. From local machine, create SSH tunnel:
+
+```bash
+ssh -N -L 8650:127.0.0.1:8650 user@<cloud-ip>
+```
+
+5. Run `jadx-mcp-server` locally against the tunneled endpoint and pass token in request headers (see `jadx-mcp-server` docs/CLI options).
+
+This keeps traffic encrypted by SSH and avoids direct public exposure of plugin HTTP service.
 
 ## Give it a shot
 
