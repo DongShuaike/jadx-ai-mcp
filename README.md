@@ -1,3 +1,90 @@
+## Workflow-First Quick Start (Cloud Side)
+
+If your real setup is:
+
+1. Claude Code Agent (client) -> connects local `jadx-mcp-server`
+2. Cloud host -> installs and runs `jadx-ai-mcp` plugin in `jadx-gui`
+3. Local `jadx-mcp-server` -> connects to cloud plugin with token
+4. Claude Code -> calls tools from local MCP
+
+then use this minimal flow first.
+
+### Role of this repository
+
+This repository is the **cloud-side JADX plugin** only.
+
+### Architecture
+
+```mermaid
+flowchart LR
+  A["Claude Code Agent (Client)"] -->|MCP| B["Local jadx-mcp-server"]
+  B -->|HTTP + Bearer Token| C["Cloud jadx-ai-mcp plugin"]
+  C --> D["jadx-gui + APK"]
+```
+
+### Step A: Install plugin on cloud (CLI)
+
+Install released plugin:
+
+```bash
+jadx plugins --install "github:zinja-coder:jadx-ai-mcp"
+```
+
+Install local-built jar:
+
+```bash
+mvn -DskipTests package
+JAR_PATH=$(ls -t target/*.jar | head -n 1)
+jadx plugins --install-jar "$JAR_PATH"
+```
+
+### Step B: Start cloud plugin and get one-time token
+
+Recommended defaults for remote usage:
+
+```bash
+export JADX_AI_MCP_HOST=127.0.0.1
+export JADX_AI_MCP_PORT=8650
+export JADX_AI_MCP_REMOTE_MODE=true
+```
+
+Start JADX GUI:
+
+```bash
+jadx-gui /path/to/app.apk
+```
+
+Headless server:
+
+```bash
+xvfb-run -a jadx-gui /path/to/app.apk
+```
+
+Token is printed once in logs. Save it for local MCP server:
+
+```text
+One-time token (shown once): <TOKEN>
+Use Authorization header: Bearer <TOKEN>
+```
+
+### Step C: Start local MCP bridge (client side)
+
+In local `jadx-mcp-server` repo:
+
+```bash
+uv run jadx_mcp_server.py --jadx-url http://127.0.0.1:8650 --token <ONE_TIME_TOKEN>
+```
+
+If you only have cloud IP and no fixed domain, prefer SSH tunnel:
+
+```bash
+ssh -N -L 8650:127.0.0.1:8650 user@<cloud-ip>
+```
+
+Then keep `--jadx-url http://127.0.0.1:8650`.
+
+---
+
 <div align="center">
 
 # JADX-AI-MCP (Part of Zin MCP Suite)
