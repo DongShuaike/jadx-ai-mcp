@@ -37,10 +37,12 @@ public class GeneralRoutes {
             boolean isRunning = server.isRunning();
             String status = isRunning ? "Running" : "Stopped";
             String url = isRunning ? "http://" + server.getHost() + ":" + server.getPort() + "/" : "N/A";
+            String mode = server.isHeadlessMode() ? "headless-cli" : "gui";
 
             Map<String, Object> result = new HashMap<>();
             result.put("status", status);
             result.put("url", url);
+            result.put("mode", mode);
             result.put("auth_required", server.isAuthRequired());
             if (server.isAuthRequired()) {
                 result.put("token_hint", server.getMaskedToken());

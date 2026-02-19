@@ -1,6 +1,7 @@
 package com.zin.jadxaimcp.server;
 
 import io.javalin.Javalin;
+import jadx.api.JadxDecompiler;
 import jadx.gui.ui.MainWindow;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,6 +16,7 @@ import java.util.Map;
 public class PluginServer {
     private static final Logger logger = LoggerFactory.getLogger(PluginServer.class);
     private final MainWindow mainWindow;
+    private final JadxDecompiler decompiler;
     private final String host;
     private final int port;
     private final boolean authRequired;
@@ -22,6 +24,7 @@ public class PluginServer {
     private Javalin app;
     private final PaginationUtils paginationUtils;
     private volatile boolean isRunning = false;
+    private final boolean headlessMode;
 
     /**
      * @param mainWindows - The main Jadx window context
@@ -30,11 +33,30 @@ public class PluginServer {
      */
     public PluginServer(MainWindow mainWindow, String host, int port, boolean authRequired) {
         this.mainWindow = mainWindow;
+        this.decompiler = null;
         this.host = host;
         this.port = port;
         this.authRequired = authRequired;
         this.tokenAuthManager = authRequired ? new TokenAuthManager() : null;
         this.paginationUtils = new PaginationUtils();
+        this.headlessMode = false;
+    }
+
+    /**
+     * @param decompiler  - The JadxDecompiler context available in CLI mode
+     * @param host        - The host address to bind on
+     * @param port        - The port to listen on
+     * @param authRequired - Require bearer token for requests
+     */
+    public PluginServer(JadxDecompiler decompiler, String host, int port, boolean authRequired) {
+        this.mainWindow = null;
+        this.decompiler = decompiler;
+        this.host = host;
+        this.port = port;
+        this.authRequired = authRequired;
+        this.tokenAuthManager = authRequired ? new TokenAuthManager() : null;
+        this.paginationUtils = new PaginationUtils();
+        this.headlessMode = true;
     }
 
     /**
@@ -73,6 +95,7 @@ public class PluginServer {
             logger.info(JadxAIMCPBanner.banner);
             logger.info("// -------------------- JADX AI MCP PLUGIN -------------------- //");
             logger.info("JADX AI MCP Plugin HTTP Server Started at http://" + host + ":" + port + "/");
+            logger.info("JADX AI MCP Plugin mode: {}", headlessMode ? "headless-cli" : "gui");
             if (authRequired && tokenAuthManager != null) {
                 logger.info("Remote mode is enabled. One-time token (shown once): {}", tokenAuthManager.getToken());
                 logger.info("Use Authorization header: Bearer <token>");
@@ -142,6 +165,10 @@ public class PluginServer {
         return authRequired;
     }
 
+    public boolean isHeadlessMode() {
+        return headlessMode;
+    }
+
     public String getMaskedToken() {
         if (!authRequired || tokenAuthManager == null) {
             return "N/A";
@@ -203,17 +230,63 @@ public class PluginServer {
      */
     private void registerRoutes() {
         // Instantiate Route Controllers
-        // Passing 'mainWindow' and 'paginationUtils' to them so they can do their work
+        // Passing mode-specific context to them so they can do their work
         GeneralRoutes generalRoutes = new GeneralRoutes(this);
+
+        // --- General & Health ---
+        app.get("/health", generalRoutes::handleHealth);
+
+        if (headlessMode) {
+            HeadlessRoutes headlessRoutes = new HeadlessRoutes(decompiler, paginationUtils);
+
+            // --- Class & Code Navigation ---
+            app.get("/current-class", headlessRoutes::handleCurrentClass);
+            app.get("/all-classes", headlessRoutes::handleAllClasses);
+            app.get("/selected-text", headlessRoutes::handleSelectedText);
+            app.get("/class-source", headlessRoutes::handleClassSource);
+            app.get("/smali-of-class", headlessRoutes::handleSmaliOfClass);
+            app.get("/methods-of-class", headlessRoutes::handleMethodsOfClass);
+            app.get("/fields-of-class", headlessRoutes::handleFieldsOfClass);
+            app.get("/main-application-classes-code", headlessRoutes::handleMainApplicationClassesCode);
+            app.get("/main-application-classes-names", headlessRoutes::handleMainApplicationClassesNames);
+            app.get("/main-activity", headlessRoutes::handleMainActivity);
+            app.get("/search-classes-by-keyword", headlessRoutes::handleSearchClassesByKeyword);
+
+            // --- Methods ---
+            app.get("/method-by-name", headlessRoutes::handleMethodByName);
+            app.get("/search-method", headlessRoutes::handleSearchMethod);
+
+            // --- Xrefs ---
+            app.get("/xrefs-to-class", headlessRoutes::handleXrefsToClass);
+            app.get("/xrefs-to-method", headlessRoutes::handleXrefsToMethod);
+            app.get("/xrefs-to-field", headlessRoutes::handleXrefsToField);
+
+            // --- Resources & Manifest ---
+            app.get("/manifest", headlessRoutes::handleManifest);
+            app.get("/strings", headlessRoutes::handleStrings);
+            app.get("/list-all-resource-files-names", headlessRoutes::handleListAllResourceFilesNames);
+            app.get("/get-resource-file", headlessRoutes::handleGetResourceFile);
+
+            // --- Renaming (unsupported in headless) ---
+            app.get("/rename-class", headlessRoutes::handleRenameClass);
+            app.get("/rename-method", headlessRoutes::handleRenameMethod);
+            app.get("/rename-field", headlessRoutes::handleRenameField);
+            app.get("/rename-package", headlessRoutes::handleRenamePackage);
+            app.get("/rename-variable", headlessRoutes::handleRenameVariable);
+
+            // --- Debugging (unsupported in headless) ---
+            app.get("/debug/stack-frames", headlessRoutes::handleGetStackFrames);
+            app.get("/debug/variables", headlessRoutes::handleGetVariables);
+            app.get("/debug/threads", headlessRoutes::handleGetThreads);
+            return;
+        }
+
         ClassRoutes classRoutes = new ClassRoutes(mainWindow, paginationUtils);
         MethodRoutes methodRoutes = new MethodRoutes(mainWindow, paginationUtils);
         ResourceRoutes resourceRoutes = new ResourceRoutes(mainWindow);
         RefactoringRoutes refactoringRoutes = new RefactoringRoutes(mainWindow);
         DebugRoutes debugRoutes = new DebugRoutes(mainWindow);
         XrefsRoutes xrefsRoutes = new XrefsRoutes(mainWindow);
-
-        // --- General & Health ---
-        app.get("/health", generalRoutes::handleHealth);
 
         // --- Class & Code Navigation ---
         app.get("/current-class", classRoutes::handleCurrentClass);
@@ -228,11 +301,10 @@ public class PluginServer {
         app.get("/main-activity", classRoutes::handleMainActivity);
         app.get("/search-classes-by-keyword", classRoutes::handleSearchClassesByKeyword);
 
-
         // --- Methods ---
         app.get("/method-by-name", methodRoutes::handleMethodByName);
         app.get("/search-method", methodRoutes::handleSearchMethod);
-        
+
         // --- Xrefs ---
         app.get("/xrefs-to-class", xrefsRoutes::handleXrefsToClass);
         app.get("/xrefs-to-method", xrefsRoutes::handleXrefsToMethod);
@@ -254,7 +326,7 @@ public class PluginServer {
         // --- Debugging ---
         app.get("/debug/stack-frames", debugRoutes::handleGetStackFrames);
         app.get("/debug/variables", debugRoutes::handleGetVariables);
-        app.get("/debug/threads", debugRoutes::handleGetThreads);        
+        app.get("/debug/threads", debugRoutes::handleGetThreads);
     }
 
 }

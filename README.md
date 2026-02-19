@@ -48,17 +48,32 @@ export JADX_AI_MCP_PORT=8650
 export JADX_AI_MCP_REMOTE_MODE=true
 ```
 
-Start JADX GUI:
+Option 1 (desktop session): start JADX GUI
 
 ```bash
 jadx-gui /path/to/app.apk
 ```
 
-Headless server:
+Option 2 (Linux server without desktop): use Xvfb
 
 ```bash
 xvfb-run -a jadx-gui /path/to/app.apk
 ```
+
+Option 3 (pure CLI headless service, no desktop required):
+
+```bash
+java -cp "<path-to-jadx>/lib/jadx-dev-all.jar:/path/to/jadx-ai-mcp.jar" \
+  com.zin.jadxaimcp.cli.HeadlessServerLauncher \
+  --port 8650 \
+  --remote-mode true \
+  /path/to/app.apk
+```
+
+Important:
+
+- `jadx` / `jadx-cli` standard entrypoint ends with forced `System.exit`, so it is not suitable for long-running MCP service mode.
+- `HeadlessServerLauncher` keeps the process alive and exposes plugin HTTP endpoints in CLI mode.
 
 Token is printed once in logs. Save it for local MCP server:
 

@@ -5,6 +5,7 @@
 
 package com.zin.jadxaimcp;
 
+import jadx.api.JadxDecompiler;
 import jadx.api.plugins.JadxPlugin;
 import jadx.api.plugins.JadxPluginContext;
 import jadx.api.plugins.JadxPluginInfo;
@@ -34,26 +35,36 @@ public class JadxAIMCP implements JadxPlugin {
     private static final int DEFAULT_PORT = 8650;
     private static final String DEFAULT_HOST = "127.0.0.1";
     private static final boolean DEFAULT_REMOTE_MODE = true;
+    private static final boolean DEFAULT_HEADLESS_MODE = false;
+    private static final boolean DEFAULT_HEADLESS_KEEP_ALIVE = true;
 
     // Environment variables
     private static final String ENV_PORT = "JADX_AI_MCP_PORT";
     private static final String ENV_HOST = "JADX_AI_MCP_HOST";
     private static final String ENV_REMOTE_MODE = "JADX_AI_MCP_REMOTE_MODE";
+    private static final String ENV_HEADLESS_MODE = "JADX_AI_MCP_HEADLESS_MODE";
+    private static final String ENV_KEEP_ALIVE = "JADX_AI_MCP_KEEP_ALIVE";
 
     // JVM system properties
     private static final String PROP_PORT = "jadx.ai.mcp.port";
     private static final String PROP_HOST = "jadx.ai.mcp.host";
     private static final String PROP_REMOTE_MODE = "jadx.ai.mcp.remote_mode";
+    private static final String PROP_HEADLESS_MODE = "jadx.ai.mcp.headless_mode";
+    private static final String PROP_KEEP_ALIVE = "jadx.ai.mcp.keep_alive";
 
     // Config & State
     private int currentPort = DEFAULT_PORT;
     private String currentHost = DEFAULT_HOST;
     private boolean remoteModeEnabled = DEFAULT_REMOTE_MODE;
+    private boolean headlessModeEnabled = DEFAULT_HEADLESS_MODE;
+    private boolean headlessKeepAlive = DEFAULT_HEADLESS_KEEP_ALIVE;
     private Preferences prefs;
     private ScheduledExecutorService scheduler;
+    private Thread keepAliveThread;
 
     // Components
     private MainWindow mainWindow;
+    private JadxDecompiler decompiler;
     private PluginServer pluginServer;
     private PluginMenu pluginMenu;
 
@@ -71,8 +82,29 @@ public class JadxAIMCP implements JadxPlugin {
 
     @Override
     public void init(JadxPluginContext context) {
+        this.decompiler = context.getDecompiler();
         if (context.getGuiContext() == null) {
-            logger.info("JADX-AI-MCP Plugin: Running in non-GUI mode, plugin features disabled.");
+            this.headlessModeEnabled = resolveHeadlessModeEnabled();
+            if (!headlessModeEnabled) {
+                logger.info("JADX-AI-MCP Plugin: Running in non-GUI mode, plugin features disabled.");
+                logger.info(
+                        "Set {}=true (or -D{}=true) to enable CLI headless server mode.",
+                        ENV_HEADLESS_MODE,
+                        PROP_HEADLESS_MODE);
+                return;
+            }
+
+            try {
+                initializeConfig();
+                this.headlessKeepAlive = resolveHeadlessKeepAlive();
+                logger.info("JADX-AI-MCP Plugin: Headless CLI mode enabled.");
+                logger.info("JADX-AI-MCP Plugin: Effective config host={}, port={}, remote_mode={}, keep_alive={}",
+                        currentHost, currentPort, remoteModeEnabled, headlessKeepAlive);
+                startDelayedInitialization();
+                startKeepAliveIfNeeded();
+            } catch (Exception e) {
+                logger.error("JADX-AI-MCP Plugin: Headless init error: " + e.getMessage(), e);
+            }
             return;
         }
 
@@ -84,11 +116,7 @@ public class JadxAIMCP implements JadxPlugin {
             }
 
             // 1. Initialize Config
-            prefs = Preferences.userNodeForPackage(JadxAIMCP.class);
-            currentPort = prefs.getInt(PREF_KEY_PORT, DEFAULT_PORT);
-            currentHost = prefs.get(PREF_KEY_HOST, DEFAULT_HOST);
-            remoteModeEnabled = prefs.getBoolean(PREF_KEY_REMOTE_MODE, DEFAULT_REMOTE_MODE);
-            applyRuntimeOverrides();
+            initializeConfig();
 
             // 2. Initialize UI
             this.pluginMenu = new PluginMenu(mainWindow, this);
@@ -170,9 +198,15 @@ public class JadxAIMCP implements JadxPlugin {
      */
     private void startServer() {
         try {
-            if (pluginServer != null) pluginServer.stop();
+            if (pluginServer != null) {
+                pluginServer.stop();
+            }
             String effectiveHost = resolveBindHost();
-            pluginServer = new PluginServer(mainWindow, effectiveHost, currentPort, remoteModeEnabled);
+            if (headlessModeEnabled) {
+                pluginServer = new PluginServer(decompiler, effectiveHost, currentPort, remoteModeEnabled);
+            } else {
+                pluginServer = new PluginServer(mainWindow, effectiveHost, currentPort, remoteModeEnabled);
+            }
             pluginServer.start();
         } catch (Exception e) {
             logger.error("JADX-AI-MCP Plugin: Failed to start server: " + e.getMessage());
@@ -197,15 +231,23 @@ public class JadxAIMCP implements JadxPlugin {
         new Thread(() -> {
             logger.info("JADX-AI-MCP Plugin: Restarting server on {}:{} (remote mode: {})",
                     currentHost, currentPort, remoteModeEnabled);
-            if (pluginServer != null) pluginServer.stop();
+            if (pluginServer != null) {
+                pluginServer.stop();
+            }
             try {
                 Thread.sleep(1000); // Wait for port release
                 startServer();
-                SwingUtilities.invokeLater(() ->
-                    JOptionPane.showMessageDialog(mainWindow,
-                        "Server restarted at " + getServerUrl()
-                                + (isAuthRequired() ? "\nA new one-time token was printed in logs." : ""),
-                        "Server restarted.", JOptionPane.INFORMATION_MESSAGE));
+                if (mainWindow != null) {
+                    SwingUtilities.invokeLater(() ->
+                            JOptionPane.showMessageDialog(mainWindow,
+                                    "Server restarted at " + getServerUrl()
+                                            + (isAuthRequired()
+                                                    ? "\nA new one-time token was printed in logs."
+                                                    : ""),
+                                    "Server restarted.", JOptionPane.INFORMATION_MESSAGE));
+                } else {
+                    logger.info("JADX-AI-MCP Plugin: Server restarted at {}", getServerUrl());
+                }
             } catch (Exception e) {
                 logger.error("Failed to restart server", e);
             }
@@ -342,15 +384,86 @@ public class JadxAIMCP implements JadxPlugin {
      */
     private boolean isJadxFullyLoaded() {
         try {
-            if (mainWindow == null) return false;
+            if (headlessModeEnabled) {
+                if (decompiler == null) {
+                    return false;
+                }
+                if (decompiler.getRoot() != null) {
+                    return true;
+                }
+                List<?> classes = decompiler.getClassesWithInners();
+                return classes != null && !classes.isEmpty();
+            }
+
+            if (mainWindow == null) {
+                return false;
+            }
             JadxWrapper wrapper = mainWindow.getWrapper();
-            if (wrapper == null) return false;
-            // Check if we have classes or at least a decompiler instance
+            if (wrapper == null) {
+                return false;
+            }
             List<?> classes = wrapper.getIncludedClassesWithInners();
             return (classes != null && !classes.isEmpty()) || wrapper.getDecompiler() != null;
         } catch (Exception e) {
             return false;
         }
+    }
+
+    private void initializeConfig() {
+        prefs = Preferences.userNodeForPackage(JadxAIMCP.class);
+        currentPort = prefs.getInt(PREF_KEY_PORT, DEFAULT_PORT);
+        currentHost = prefs.get(PREF_KEY_HOST, DEFAULT_HOST);
+        remoteModeEnabled = prefs.getBoolean(PREF_KEY_REMOTE_MODE, DEFAULT_REMOTE_MODE);
+        applyRuntimeOverrides();
+    }
+
+    private boolean resolveHeadlessModeEnabled() {
+        String override = firstNonEmpty(System.getProperty(PROP_HEADLESS_MODE), System.getenv(ENV_HEADLESS_MODE));
+        if (override == null) {
+            return DEFAULT_HEADLESS_MODE;
+        }
+        Boolean parsed = parseBoolean(override);
+        if (parsed == null) {
+            logger.warn("JADX-AI-MCP Plugin: Ignoring invalid headless mode override '{}'", override);
+            return DEFAULT_HEADLESS_MODE;
+        }
+        return parsed;
+    }
+
+    private boolean resolveHeadlessKeepAlive() {
+        String override = firstNonEmpty(System.getProperty(PROP_KEEP_ALIVE), System.getenv(ENV_KEEP_ALIVE));
+        if (override == null) {
+            return DEFAULT_HEADLESS_KEEP_ALIVE;
+        }
+        Boolean parsed = parseBoolean(override);
+        if (parsed == null) {
+            logger.warn("JADX-AI-MCP Plugin: Ignoring invalid keep_alive override '{}'", override);
+            return DEFAULT_HEADLESS_KEEP_ALIVE;
+        }
+        return parsed;
+    }
+
+    private void startKeepAliveIfNeeded() {
+        if (!headlessModeEnabled || !headlessKeepAlive) {
+            return;
+        }
+        if (keepAliveThread != null && keepAliveThread.isAlive()) {
+            return;
+        }
+
+        keepAliveThread = new Thread(() -> {
+            logger.info(
+                    "JADX-AI-MCP Plugin: Headless keep-alive enabled. Process will stay alive for MCP requests.");
+            while (!Thread.currentThread().isInterrupted()) {
+                try {
+                    Thread.sleep(TimeUnit.DAYS.toMillis(1));
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }, "JADX-AI-MCP-KeepAlive");
+        keepAliveThread.setDaemon(false);
+        keepAliveThread.start();
     }
 
     private String resolveBindHost() {
